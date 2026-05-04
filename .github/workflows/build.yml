@@ -1,0 +1,40 @@
+name: Build and Deploy APK
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 34
+          build-tools-version: 34.0.0
+      
+      - name: Build APK
+        run: |
+          cd $GITHUB_WORKSPACE
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+      
+      - name: Upload to Firebase
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceAccountJsonPlaintext: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          file: app/build/outputs/apk/debug/app-debug.apk
+          releaseNotes: "Automated build from GitHub Actions"
+          testers: "winddungi@gmail.com"
