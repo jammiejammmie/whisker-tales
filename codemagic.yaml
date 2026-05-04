@@ -1,0 +1,40 @@
+workflows:
+  unity-android-workflow:
+    name: Unity Android Build
+    instance_type: mac_mini_m1
+    max_build_duration: 120
+    environment:
+      android_signing:
+        - keystore_reference
+      vars:
+        UNITY_VERSION: "2022.3"
+        ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT
+        ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT
+    triggering:
+      events:
+        - push
+      branch:
+        - master
+    scripts:
+      - name: Install Unity
+        script: |
+          brew install --cask unity-hub
+          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version $UNITY_VERSION --changeset 3b38c6e8c4d0 2>&1 | grep -i "installed\|error" || true
+      - name: Build Android APK
+        script: |
+          /Applications/Unity/Hub/Editor/$UNITY_VERSION*/Unity.app/Contents/MacOS/Unity \
+            -projectPath . \
+            -executeMethod BuildScript.BuildAndroid \
+            -nographics \
+            -logFile - \
+            -quit
+    artifacts:
+      - build/outputs/apk/**/*.apk
+    publishing:
+      firebase:
+        firebase_service_account: $FIREBASE_SERVICE_ACCOUNT
+        android:
+          app_id: $FIREBASE_APP_ID
+          groups:
+            - testers
+          release_notes: "Build from Codemagic"
