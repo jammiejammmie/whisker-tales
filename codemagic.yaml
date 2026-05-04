@@ -13,7 +13,7 @@ workflows:
     triggering:
       events:
         - push
-      branch:
+      branches:
         - master
     scripts:
       - name: Install Unity
@@ -37,4 +37,3 @@ workflows:
           app_id: $FIREBASE_APP_ID
           groups:
             - testers
-          release_notes: "Build from Codemagic"
