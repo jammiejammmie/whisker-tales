@@ -1,0 +1,112 @@
+{
+  "cafeAreas": [
+    {
+      "areaId": 1,
+      "areaName": "입구 마당",
+      "stages": [
+        {
+          "stage": 1,
+          "description": "낡은 간판 복원",
+          "starsRequired": 50,
+          "visualChangeKey": "cafe_stage_1_sign_restored"
+        },
+        {
+          "stage": 2,
+          "description": "담장 정리",
+          "starsRequired": 75,
+          "visualChangeKey": "cafe_stage_2_wall_restored"
+        },
+        {
+          "stage": 3,
+          "description": "마당 청소",
+          "starsRequired": 100,
+          "visualChangeKey": "cafe_stage_3_ground_clean"
+        },
+        {
+          "stage": 4,
+          "description": "화단 꾸미기",
+          "starsRequired": 125,
+          "visualChangeKey": "cafe_stage_4_garden_flowers"
+        },
+        {
+          "stage": 5,
+          "description": "입구 완성!",
+          "starsRequired": 150,
+          "visualChangeKey": "cafe_stage_5_entrance_complete"
+        }
+      ]
+    },
+    {
+      "areaId": 2,
+      "areaName": "카페 본채",
+      "stages": [
+        {
+          "stage": 1,
+          "description": "지붕 기와 수리",
+          "starsRequired": 200,
+          "visualChangeKey": "cafe_stage_6_roof_restored"
+        },
+        {
+          "stage": 2,
+          "description": "창문 수리",
+          "starsRequired": 225,
+          "visualChangeKey": "cafe_stage_7_windows_fixed"
+        },
+        {
+          "stage": 3,
+          "description": "벽 칠하기",
+          "starsRequired": 250,
+          "visualChangeKey": "cafe_stage_8_walls_painted"
+        },
+        {
+          "stage": 4,
+          "description": "문 교체",
+          "starsRequired": 275,
+          "visualChangeKey": "cafe_stage_9_door_replaced"
+        },
+        {
+          "stage": 5,
+          "description": "본채 완성!",
+          "starsRequired": 300,
+          "visualChangeKey": "cafe_stage_10_main_complete"
+        }
+      ]
+    },
+    {
+      "areaId": 3,
+      "areaName": "뒷마당",
+      "stages": [
+        {
+          "stage": 1,
+          "description": "연못 청소",
+          "starsRequired": 350,
+          "visualChangeKey": "cafe_stage_11_pond_clean"
+        },
+        {
+          "stage": 2,
+          "description": "나무 정리",
+          "starsRequired": 375,
+          "visualChangeKey": "cafe_stage_12_trees_trimmed"
+        },
+        {
+          "stage": 3,
+          "description": "벤치 설치",
+          "starsRequired": 400,
+          "visualChangeKey": "cafe_stage_13_bench_installed"
+        },
+        {
+          "stage": 4,
+          "description": "등불 달기",
+          "starsRequired": 425,
+          "visualChangeKey": "cafe_stage_14_lanterns_hung"
+        },
+        {
+          "stage": 5,
+          "description": "뒷마당 완성!",
+          "starsRequired": 450,
+          "visualChangeKey": "cafe_stage_15_backyard_complete"
+        }
+      ]
+    }
+  ]
+}

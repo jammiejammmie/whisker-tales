@@ -1,0 +1,23 @@
+{
+  "level_id": 11,
+  "grid_size": [
+    8,
+    8
+  ],
+  "move_limit": 25,
+  "target_score": 5500,
+  "objectives": [
+    {
+      "type": "collect_item",
+      "item_id": "cat_toy",
+      "count": 16
+    }
+  ],
+  "obstacles": [
+    {
+      "type": "crate",
+      "count": 1
+    }
+  ],
+  "difficulty_rating": 2
+}

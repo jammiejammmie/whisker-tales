@@ -1,0 +1,40 @@
+{
+  "project": "Whisker Tales",
+  "version": "1.1",
+  "total_levels": 50,
+  "difficulty_curve": "Sawtooth",
+  "levels": [
+    {
+      "level_id": 1,
+      "difficulty": "Tutorial",
+      "target_score": 500,
+      "move_limit": 20,
+      "description": "Welcome to the Hanok Cafe! Match 3 tiles to start."
+    },
+    {
+      "level_id": 5,
+      "difficulty": "Mini-Boss",
+      "target_score": 2500,
+      "move_limit": 15,
+      "obstacles": ["Wooden Plank"],
+      "description": "First real challenge. Clear the planks!"
+    },
+    {
+      "level_id": 25,
+      "difficulty": "Hard",
+      "target_score": 15000,
+      "move_limit": 25,
+      "obstacles": ["Ice Block", "Double Plank"],
+      "description": "Mid-way point. Precision is key."
+    },
+    {
+      "level_id": 50,
+      "difficulty": "Master",
+      "target_score": 50000,
+      "move_limit": 30,
+      "obstacles": ["Locked Tiles", "Golden Bell"],
+      "description": "Final challenge of the Hanok Chapter. Become a Master Butler!"
+    }
+  ],
+  "balancing_notes": "Levels 1-10 focus on retention and accessibility. Levels 11-50 introduce competitive pressure and monetization hooks via move-limit constraints."
+}

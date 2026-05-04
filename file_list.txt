@@ -1,0 +1,8 @@
+file '/home/ubuntu/WhiskerTales/Segment_0_2_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_2_5_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_5_8_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_8_10_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_10_12_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_12_15_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_15_18_Text.mp4'
+file '/home/ubuntu/WhiskerTales/Segment_18_24.mp4'
