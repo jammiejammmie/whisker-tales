@@ -6,10 +6,6 @@ workflows:
     environment:
       vars:
         UNITY_VERSION: "2022.3.0f1"
-      secrets:
-        - FIREBASE_APP_ID
-        - FIREBASE_TOKEN
-        - FIREBASE_EMAIL
     scripts:
       - name: Install Unity
         script: |
