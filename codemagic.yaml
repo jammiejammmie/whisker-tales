@@ -7,24 +7,23 @@ workflows:
       vars:
         UNITY_VERSION: "2022.3.0f1"
     scripts:
+      - name: Install Unity
+        script: |
+          # Install Unity Hub
+          brew install --cask unity-hub
+          
+          # Install Unity Editor
+          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version $UNITY_VERSION --changeset 3b38c6e8c4d0 2>&1 || true
       - name: Build Android APK
         script: |
-          # Use pre-installed Unity (skip installation)
-          # Codemagic has Unity 2022.3 pre-installed
+          # Find Unity installation
           UNITY_PATH="/Applications/Unity/Hub/Editor/$UNITY_VERSION/Unity.app/Contents/MacOS/Unity"
           
-          # If not found, search for available Unity
           if [ ! -f "$UNITY_PATH" ]; then
-            echo "Searching for available Unity installations..."
+            echo "Unity not found at $UNITY_PATH"
             UNITY_PATH=$(find /Applications/Unity/Hub/Editor -name "Unity" -type f | head -1)
-            if [ -z "$UNITY_PATH" ]; then
-              echo "ERROR: Unity not found!"
-              exit 1
-            fi
-            echo "Found Unity at: $UNITY_PATH"
+            echo "Using Unity at: $UNITY_PATH"
           fi
-          
-          echo "Using Unity at: $UNITY_PATH"
           
           # Build APK
           "$UNITY_PATH" \
