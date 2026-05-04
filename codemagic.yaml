@@ -13,7 +13,7 @@ workflows:
           brew install --cask unity-hub
           
           # Install Unity Editor
-          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version $UNITY_VERSION --changeset 3b38c6e8c4d0 2>&1 || true
+          /Applications/Unity\ Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version $UNITY_VERSION --changeset 3b38c6e8c4d0 --architecture arm64 2>&1 || true
       - name: Build Android APK
         script: |
           # Find Unity installation
