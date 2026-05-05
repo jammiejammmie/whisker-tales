@@ -32,23 +32,26 @@ workflows:
             -nographics \
             -logFile - \
             -quit || true
-      - name: Deploy to Firebase App Distribution
+      - name: Verify APK Build
         script: |
-          # Install Firebase CLI
-          npm install -g firebase-tools
-          
           # Find APK file
-          APK_FILE=$(find . -name "*.apk" -type f | grep -E "(build|output)" | head -1)
+          echo "Searching for APK files..."
+          find . -name "*.apk" -type f 2>/dev/null | head -20
+          
+          APK_FILE=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
           
           if [ -z "$APK_FILE" ]; then
-            echo "❌ APK file not found in expected locations"
-            find . -name "*.apk" -type f
+            echo "❌ APK file not found"
+            echo "Build directory contents:"
+            ls -la build/ 2>/dev/null || echo "No build directory"
             exit 1
           fi
           
           echo "✅ Found APK: $APK_FILE"
+          echo "APK file size: $(du -h "$APK_FILE" | cut -f1)"
     artifacts:
       - build/app/outputs/apk/**/*.apk
       - build/app/outputs/bundle/**/*.aab
       - build/outputs/apk/**/*.apk
       - build/outputs/bundle/**/*.aab
+      - "**/*.apk"
