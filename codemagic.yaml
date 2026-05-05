@@ -32,5 +32,23 @@ workflows:
             -nographics \
             -logFile - \
             -quit || true
+      - name: Deploy to Firebase App Distribution
+        script: |
+          # Install Firebase CLI
+          npm install -g firebase-tools
+          
+          # Find APK file
+          APK_FILE=$(find . -name "*.apk" -type f | grep -E "(build|output)" | head -1)
+          
+          if [ -z "$APK_FILE" ]; then
+            echo "❌ APK file not found in expected locations"
+            find . -name "*.apk" -type f
+            exit 1
+          fi
+          
+          echo "✅ Found APK: $APK_FILE"
     artifacts:
+      - build/app/outputs/apk/**/*.apk
+      - build/app/outputs/bundle/**/*.aab
       - build/outputs/apk/**/*.apk
+      - build/outputs/bundle/**/*.aab
