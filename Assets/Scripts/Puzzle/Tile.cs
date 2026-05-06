@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using WhiskerTales.Utilities;
+using WhiskerTales.UI;
 
 namespace WhiskerTales.Puzzle
 {
