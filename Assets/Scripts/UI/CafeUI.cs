@@ -137,9 +137,8 @@ namespace WhiskerTales.UI
             }
 
             // 언락된 고양이 표시
-            List<Cat> unlockedCats = catManager.GetUnlockedCats();
-            foreach (Cat cat in unlockedCats)
-            {
+List<WhiskerTales.Core.Cat> unlockedCats = catManager.GetUnlockedCats();
+foreach (WhiskerTales.Core.Cat cat in unlockedCats)            {
                 GameObject catDisplay = Instantiate(catDisplayPrefab, catDisplayContainer);
 
                 // 고양이 정보 설정
