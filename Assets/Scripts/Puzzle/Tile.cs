@@ -209,7 +209,7 @@ namespace WhiskerTales.Puzzle
         {
             return obstacle switch
             {
-                ObstacleType.Box => Color.brown,
+                ObstacleType.Box => new Color(0.6f, 0.3f, 0f),
                 ObstacleType.Ice => Color.cyan,
                 ObstacleType.Lock => new Color(1f, 0.84f, 0f, 1f), // Gold
                 ObstacleType.Chain => Color.gray,
