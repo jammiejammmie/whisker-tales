@@ -1,109 +1,29 @@
 name: Unity Android APK Build
-
 on:
   push:
     branches:
       - master
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: true
-
-      - name: Clean git status
-        run: |
-          git clean -fd
-          git reset --hard
-
-      - name: Create LFS file list
-        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfsconfig
-
-      - name: Restore LFS cache
-        uses: actions/cache@v3
-        id: lfs-cache
-        with:
-          path: .git/lfs
-          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfsconfig') }}
-
-      - name: Git LFS Pull
-        run: |
-          git lfs install
-          git lfs pull
-
-      - name: Restore Library cache
-        uses: actions/cache@v3
-        with:
-          path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          restore-keys: |
-            Library-
-
-      - name: Setup Unity
-        uses: buildalon/unity-setup@v2
+      - uses: actions/checkout@v4
+      - uses: buildalon/unity-setup@v2
         with:
           version-file: 'ProjectSettings/ProjectVersion.txt'
-
-      - name: Activate Unity License
-        uses: buildalon/activate-unity-license@v2
+          build-targets: Android
+      - uses: buildalon/activate-unity-license@v2
         with:
           license: 'Personal'
-          username: winddungi@gmail.com
-          password: Dbslxl333!
-
-      - name: Build Android APK
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: winddungi@gmail.com
-          UNITY_PASSWORD: Dbslxl333!
+          username: ${{ secrets.UNITY_USERNAME }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+      - uses: buildalon/unity-action@v1
+        name: Build Android
         with:
-          targetPlatform: Android
-          unityVersion: 2022.3.62f3
-          buildMethod: Builder.BuildAndroid
-          androidExportType: androidPackage
-          androidKeystoreName: user.keystore
-          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-          androidKeyaliasName: ${{ secrets.ANDROID_KEY_ALIAS_NAME }}
-          androidKeyaliasPass: ${{ secrets.ANDROID_KEY_ALIAS_PASS }}
-          allowDirtyBuild: true
-
-      - name: Upload APK as artifact
-        uses: actions/upload-artifact@v4
+          build-target: Android
+          args: '-quit -batchmode -buildTarget Android'
+      - uses: actions/upload-artifact@v4
         with:
-          name: Android APK
-          path: build/Android/*.apk
-          retention-days: 30
-
-      - name: Create Release
-        uses: actions/create-release@v1
-        if: success()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: build-${{ github.run_number }}
-          release_name: Build ${{ github.run_number }}
-          body: |
-            Automated APK build from GitHub Actions
-            Commit: ${{ github.sha }}
-            Branch: ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload APK to Release
-        uses: actions/upload-release-asset@v1
-        if: success()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/Android/Whisker Tales.apk
-          asset_name: whisker-tales-${{ github.run_number }}.apk
-          asset_content_type: application/vnd.android.package-archive
+          name: Android-APK
+          path: '**/*.apk'
