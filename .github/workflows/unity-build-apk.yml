@@ -58,7 +58,7 @@ jobs:
           androidKeyaliasPass: ${{ secrets.ANDROID_KEY_ALIAS_PASS }}
 
       - name: Upload APK as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Android APK
           path: build/Android/*.apk
