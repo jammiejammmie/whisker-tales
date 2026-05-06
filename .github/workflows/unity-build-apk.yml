@@ -61,6 +61,7 @@ jobs:
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           androidKeyaliasName: ${{ secrets.ANDROID_KEY_ALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEY_ALIAS_PASS }}
+          allowDirtyBuild: true
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
