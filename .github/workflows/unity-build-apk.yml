@@ -45,6 +45,13 @@ jobs:
           restore-keys: |
             Library-
 
+      - name: Activate Unity License
+        uses: buildalon/activate-unity-license@v2
+        with:
+          license: 'Personal'
+          username: winddungi@gmail.com
+          password: Dbslxl333!
+
       - name: Build Android APK
         uses: game-ci/unity-builder@v4
         env:
