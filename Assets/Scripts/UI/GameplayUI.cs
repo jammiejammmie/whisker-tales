@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
+#if UNITY_ANDROID || UNITY_IOS
 using TMPro;
+#endif
 using WhiskerTales.Core;
 using WhiskerTales.Puzzle;
 using WhiskerTales.Utilities;
@@ -13,10 +15,17 @@ namespace WhiskerTales.UI
     /// </summary>
     public class GameplayUI : MonoBehaviour
     {
+#if UNITY_ANDROID || UNITY_IOS
         [SerializeField] private TextMeshProUGUI levelText;
         [SerializeField] private TextMeshProUGUI scoreText;
         [SerializeField] private TextMeshProUGUI movesText;
         [SerializeField] private TextMeshProUGUI goalText;
+#else
+        [SerializeField] private Text levelText;
+        [SerializeField] private Text scoreText;
+        [SerializeField] private Text movesText;
+        [SerializeField] private Text goalText;
+#endif
         [SerializeField] private Slider progressSlider;
         [SerializeField] private Button pauseButton;
         [SerializeField] private Button menuButton;

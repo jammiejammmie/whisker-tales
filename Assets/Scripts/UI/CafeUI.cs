@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
+#if UNITY_ANDROID || UNITY_IOS
 using TMPro;
+#endif
 using System.Collections.Generic;
 using WhiskerTales.Core;
 using WhiskerTales.Cafe;
@@ -14,7 +16,11 @@ namespace WhiskerTales.UI
     /// </summary>
     public class CafeUI : MonoBehaviour
     {
+#if UNITY_ANDROID || UNITY_IOS
         [SerializeField] private TextMeshProUGUI cafeProgressText;
+#else
+        [SerializeField] private Text cafeProgressText;
+#endif
         [SerializeField] private Slider cafeProgressSlider;
         [SerializeField] private Transform taskListContainer;
         [SerializeField] private GameObject taskItemPrefab;
@@ -84,9 +90,15 @@ namespace WhiskerTales.UI
                 taskUIItems.Add(taskItem);
 
                 // 작업 정보 설정
+#if UNITY_ANDROID || UNITY_IOS
                 TextMeshProUGUI taskNameText = taskItem.transform.Find("TaskName")?.GetComponent<TextMeshProUGUI>();
                 TextMeshProUGUI taskStarsText = taskItem.transform.Find("RequiredStars")?.GetComponent<TextMeshProUGUI>();
                 TextMeshProUGUI taskRewardText = taskItem.transform.Find("Reward")?.GetComponent<TextMeshProUGUI>();
+#else
+                Text taskNameText = taskItem.transform.Find("TaskName")?.GetComponent<Text>();
+                Text taskStarsText = taskItem.transform.Find("RequiredStars")?.GetComponent<Text>();
+                Text taskRewardText = taskItem.transform.Find("Reward")?.GetComponent<Text>();
+#endif
                 Button completeButton = taskItem.transform.Find("CompleteButton")?.GetComponent<Button>();
                 Image completedImage = taskItem.transform.Find("Completed")?.GetComponent<Image>();
 
@@ -131,8 +143,13 @@ namespace WhiskerTales.UI
                 GameObject catDisplay = Instantiate(catDisplayPrefab, catDisplayContainer);
 
                 // 고양이 정보 설정
+#if UNITY_ANDROID || UNITY_IOS
                 TextMeshProUGUI catNameText = catDisplay.transform.Find("CatName")?.GetComponent<TextMeshProUGUI>();
                 TextMeshProUGUI catAffinityText = catDisplay.transform.Find("Affinity")?.GetComponent<TextMeshProUGUI>();
+#else
+                Text catNameText = catDisplay.transform.Find("CatName")?.GetComponent<Text>();
+                Text catAffinityText = catDisplay.transform.Find("Affinity")?.GetComponent<Text>();
+#endif
                 Image catPortrait = catDisplay.transform.Find("Portrait")?.GetComponent<Image>();
 
                 if (catNameText != null)
