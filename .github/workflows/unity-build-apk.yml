@@ -17,6 +17,11 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Clean git status
+        run: |
+          git clean -fd
+          git reset --hard
+
       - name: Create LFS file list
         run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfsconfig
 
