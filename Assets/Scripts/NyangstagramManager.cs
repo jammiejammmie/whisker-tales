@@ -65,5 +65,5 @@ public class NyangstagramManager : MonoBehaviour
         if (postsCreatedToday >= maxPostsPerDay) return false;
 
         NyangstagramPost newPost = new NyangstagramPost();
-        newPost.postId = System.Guid.NewGuid().ToString();
+        newPost.postId = System.DateTime.Now.Ticks.ToString();
         newPost.userId =
