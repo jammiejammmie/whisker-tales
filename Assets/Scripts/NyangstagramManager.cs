@@ -66,4 +66,4 @@ public class NyangstagramManager : MonoBehaviour
 
         NyangstagramPost newPost = new NyangstagramPost();
         newPost.postId = System.DateTime.Now.Ticks.ToString();
-        newPost.userId =
+        newPost.userId = currentPlayerId;
