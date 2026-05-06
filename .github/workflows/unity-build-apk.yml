@@ -22,7 +22,7 @@ jobs:
         name: Build Android
         with:
           build-target: Android
-          args: '-quit -batchmode -buildTarget Android'
+          args: '-quit -batchmode -buildTarget Android -executeMethod Builder.BuildAndroid'
       - name: Upload Unity Logs
         if: always()
         uses: actions/upload-artifact@v4
