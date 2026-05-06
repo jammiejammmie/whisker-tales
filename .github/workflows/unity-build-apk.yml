@@ -45,6 +45,11 @@ jobs:
           restore-keys: |
             Library-
 
+      - name: Setup Unity
+        uses: buildalon/unity-setup@v2
+        with:
+          version-file: 'ProjectSettings/ProjectVersion.txt'
+
       - name: Activate Unity License
         uses: buildalon/activate-unity-license@v2
         with:
