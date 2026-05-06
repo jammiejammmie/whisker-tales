@@ -28,7 +28,6 @@ namespace WhiskerTales.UI
             board = FindObjectOfType<Board>();
             levelGoal = FindObjectOfType<LevelGoal>();
             gameManager = GameManager.Instance;
-
             InitializeUI();
             SubscribeToEvents();
         }
@@ -36,11 +35,11 @@ namespace WhiskerTales.UI
         private void InitializeUI()
         {
             if (levelText != null && gameManager != null)
-                levelText.text = $"Level {gameManager.UserProgress.currentLevel}";
-
+            {
+                levelText.text = "Level " + gameManager.UserProgress.currentLevel;
+            }
             if (pauseButton != null) pauseButton.onClick.AddListener(OnPauseClicked);
             if (menuButton != null) menuButton.onClick.AddListener(OnMenuClicked);
-
             UpdateUI();
         }
 
@@ -51,7 +50,6 @@ namespace WhiskerTales.UI
                 board.OnTilesMatched += OnTilesMatched;
                 board.OnBoardChanged += OnBoardChanged;
             }
-
             if (levelGoal != null)
             {
                 levelGoal.OnProgressChanged += OnProgressChanged;
@@ -76,8 +74,9 @@ namespace WhiskerTales.UI
             else
             {
                 if (board.TrySwapTiles(selectedTile, tile))
-                    levelGoal?.UseMove();
-
+                {
+                    if (levelGoal != null) levelGoal.UseMove();
+                }
                 selectedTile.SetSelected(false);
                 selectedTile = null;
             }
@@ -86,15 +85,15 @@ namespace WhiskerTales.UI
         public void UpdateScore(int score)
         {
             currentScore = score;
-            if (scoreText != null) scoreText.text = $"Score: {currentScore}";
+            if (scoreText != null) scoreText.text = "Score: " + currentScore;
         }
 
         private void OnTilesMatched(System.Collections.Generic.List<Tile> matchedTiles)
         {
             int matchScore = matchedTiles.Count * 100;
             currentScore += matchScore;
-            if (scoreText != null) scoreText.text = $"Score: {currentScore}";
-            levelGoal?.UpdateProgress(matchedTiles);
+            if (scoreText != null) scoreText.text = "Score: " + currentScore;
+            if (levelGoal != null) levelGoal.UpdateProgress(matchedTiles);
         }
 
         private void OnBoardChanged() { UpdateUI(); }
@@ -103,35 +102,46 @@ namespace WhiskerTales.UI
 
         private void OnGoalAchieved()
         {
-            int stars = levelGoal?.CalculateStars() ?? 0;
-            gameManager?.CompleteLevel(gameManager.UserProgress.currentLevel, stars);
-            Debug.Log($"[GameplayUI] Level complete with {stars} stars!");
+            int stars = 0;
+            if (levelGoal != null) stars = levelGoal.CalculateStars();
+            if (gameManager != null) gameManager.CompleteLevel(gameManager.UserProgress.currentLevel, stars);
+            Debug.Log("[GameplayUI] Level complete with " + stars + " stars!");
         }
 
         private void OnMovesExceeded()
         {
-            gameManager?.FailLevel(gameManager.UserProgress.currentLevel);
+            if (gameManager != null) gameManager.FailLevel(gameManager.UserProgress.currentLevel);
             Debug.Log("[GameplayUI] Level failed!");
         }
 
         private void UpdateUI()
         {
-            if (scoreText != null) scoreText.text = $"Score: {currentScore}";
-
+            if (scoreText != null) scoreText.text = "Score: " + currentScore;
             if (levelGoal != null)
             {
-                if (movesText != null) movesText.text = $"Moves: {levelGoal.GetRemainingMoves()}";
-                if (goalText != null) goalText.text = $"{levelGoal.GetGoalDescription()}\n{levelGoal.GetProgressDescription()}";
+                if (movesText != null) movesText.text = "Moves: " + levelGoal.GetRemainingMoves();
+                if (goalText != null) goalText.text = levelGoal.GetGoalDescription() + "\n" + levelGoal.GetProgressDescription();
                 if (progressSlider != null) progressSlider.value = levelGoal.GetProgressPercentage() / 100f;
             }
         }
 
-        private void OnPauseClicked() { gameManager?.PauseGame(); }
-        private void OnMenuClicked() { gameManager?.ReturnToMenu(); }
+        private void OnPauseClicked() { if (gameManager != null) gameManager.PauseGame(); }
+        private void OnMenuClicked() { if (gameManager != null) gameManager.ReturnToMenu(); }
 
         private void OnDestroy()
         {
-            if (board != null) { board.OnTilesMatched -= OnTilesMatched; board.OnBoardChanged -= OnBoardChanged; }
+            if (board != null)
+            {
+                board.OnTilesMatched -= OnTilesMatched;
+                board.OnBoardChanged -= OnBoardChanged;
+            }
             if (levelGoal != null)
             {
-                levelGoal.OnProgressChanged
+                levelGoal.OnProgressChanged -= OnProgressChanged;
+                levelGoal.OnMovesChanged -= OnMovesChanged;
+                levelGoal.OnGoalAchieved -= OnGoalAchieved;
+                levelGoal.OnMovesExceeded -= OnMovesExceeded;
+            }
+        }
+    }
+}
