@@ -9,7 +9,6 @@
 *.csproj
 *.sln
 *.unitypackage
-*.meta
 
 # IDE
 .vscode/

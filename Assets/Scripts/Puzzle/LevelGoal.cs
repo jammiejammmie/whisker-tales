@@ -1,7 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using WhiskerTales.Core;
-using WhiskerTales.Utilities;
 
 namespace WhiskerTales.Puzzle
 {
@@ -44,64 +42,6 @@ namespace WhiskerTales.Puzzle
             movesUsed = 0;
 
             Debug.Log($"[LevelGoal] Initialized - Type: {goalType}, Goal: {goalValue}, Moves: {moveLimit}");
-        }
-
-        /// <summary>
-        /// 진행도 업데이트 (매치된 타일 기반)
-        /// </summary>
-        public void UpdateProgress(List<Tile> removedTiles)
-        {
-            if (removedTiles == null || removedTiles.Count == 0)
-                return;
-
-            int previousProgress = currentProgress;
-
-            switch (goalType)
-            {
-                case LevelGoalType.RemoveBlocks:
-                    // 제거된 블록 수 계산
-                    currentProgress += removedTiles.Count;
-                    break;
-
-                case LevelGoalType.CollectItems:
-                    // 특정 아이템 수집 (예: 특수 아이템)
-                    foreach (Tile tile in removedTiles)
-                    {
-                        if (tile.specialItem != SpecialItemType.None)
-                        {
-                            currentProgress++;
-                        }
-                    }
-                    break;
-
-                case LevelGoalType.ReachScore:
-                    // 점수 계산 (블록 수 × 기본값)
-                    currentProgress += removedTiles.Count * 100;
-                    break;
-
-                case LevelGoalType.DestroyObstacles:
-                    // 장애물 제거 수 계산
-                    foreach (Tile tile in removedTiles)
-                    {
-                        if (tile.obstacleHealth > 0)
-                        {
-                            currentProgress++;
-                        }
-                    }
-                    break;
-            }
-
-            // 목표값 초과 방지
-            if (currentProgress > goalValue)
-            {
-                currentProgress = goalValue;
-            }
-
-            if (currentProgress != previousProgress)
-            {
-                OnProgressChanged?.Invoke(currentProgress);
-                Debug.Log($"[LevelGoal] Progress updated: {currentProgress}/{goalValue}");
-            }
         }
 
         /// <summary>
@@ -207,8 +147,7 @@ namespace WhiskerTales.Puzzle
         }
 
         /// <summary>
-        /// 진행도 업데이트 (TileData 기반 — Stage 2에서 추가됨)
-        /// Board가 TileData 배열을 사용하므로 Tile 오버로드와 별개로 제공
+        /// 진행도 업데이트 (제거된 TileData 기반)
         /// </summary>
         public void UpdateProgress(List<TileData> removedTiles)
         {

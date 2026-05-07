@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using WhiskerTales.Core;
 
 namespace WhiskerTales.Puzzle
 {
@@ -133,8 +132,6 @@ namespace WhiskerTales.Puzzle
                 foreach (List<TileData> matches in allMatches)
                 {
                     OnMatchFound?.Invoke(matches);
-                    if (AudioManager.instance != null)
-                        AudioManager.instance.PlaySFX("match_success");
 
                     SpecialItemType special = MatchLogic.GetSpecialItemType(matches);
                     if (special != SpecialItemType.None)
@@ -158,8 +155,6 @@ namespace WhiskerTales.Puzzle
                         isLevelComplete = true;
                         starsEarned = levelGoal.CalculateStars();
                         OnLevelComplete?.Invoke(starsEarned);
-                        if (CafeRestorationManager.instance != null)
-                            CafeRestorationManager.instance.OnPuzzleClear(starsEarned);
                         Debug.Log($"[Board] Goal achieved. Stars: {starsEarned}");
                     }
                     else if (levelGoal.IsMovesExceeded())
@@ -177,8 +172,6 @@ namespace WhiskerTales.Puzzle
                         isLevelComplete = true;
                         starsEarned = CalculateStarsLegacy();
                         OnLevelComplete?.Invoke(starsEarned);
-                        if (CafeRestorationManager.instance != null)
-                            CafeRestorationManager.instance.OnPuzzleClear(starsEarned);
                         Debug.Log($"[Board] Level complete (legacy). Stars: {starsEarned}");
                     }
                 }
