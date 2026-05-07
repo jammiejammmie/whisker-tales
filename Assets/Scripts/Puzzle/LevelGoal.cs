@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 using WhiskerTales.Core;
 using WhiskerTales.Utilities;
@@ -207,6 +207,54 @@ namespace WhiskerTales.Puzzle
         }
 
         /// <summary>
+        /// 진행도 업데이트 (TileData 기반 — Stage 2에서 추가됨)
+        /// Board가 TileData 배열을 사용하므로 Tile 오버로드와 별개로 제공
+        /// </summary>
+        public void UpdateProgress(List<TileData> removedTiles)
+        {
+            if (removedTiles == null || removedTiles.Count == 0)
+                return;
+
+            int previousProgress = currentProgress;
+
+            switch (goalType)
+            {
+                case LevelGoalType.RemoveBlocks:
+                    currentProgress += removedTiles.Count;
+                    break;
+
+                case LevelGoalType.CollectItems:
+                    foreach (TileData tile in removedTiles)
+                    {
+                        if (tile.specialItem != SpecialItemType.None)
+                            currentProgress++;
+                    }
+                    break;
+
+                case LevelGoalType.ReachScore:
+                    currentProgress += removedTiles.Count * 100;
+                    break;
+
+                case LevelGoalType.DestroyObstacles:
+                    foreach (TileData tile in removedTiles)
+                    {
+                        if (tile.obstacle != ObstacleType.None && tile.obstacleHealth > 0)
+                            currentProgress++;
+                    }
+                    break;
+            }
+
+            if (currentProgress > goalValue)
+                currentProgress = goalValue;
+
+            if (currentProgress != previousProgress)
+            {
+                OnProgressChanged?.Invoke(currentProgress);
+                Debug.Log($"[LevelGoal] Progress updated (TileData): {currentProgress}/{goalValue}");
+            }
+        }
+
+        /// <summary>
         /// 레벨 리셋
         /// </summary>
         public void Reset()
@@ -217,3 +265,4 @@ namespace WhiskerTales.Puzzle
         }
     }
 }
+

@@ -1,4 +1,4 @@
-# Unity
+﻿# Unity
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
@@ -28,3 +28,4 @@ Thumbs.db
 *.aar
 *.jar
 .lfsconfig
+
