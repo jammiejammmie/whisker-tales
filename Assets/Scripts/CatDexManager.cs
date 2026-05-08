@@ -68,28 +68,11 @@ public class CatDexManager : MonoBehaviour
         // 실제로는 JSON이나 ScriptableObject에서 로드
         allCats = new List<CatData>
         {
-            // Tier 1: Common (5마리)
-            new CatData { catId = 1, catName = "주황이", breed = "길냥이", personality = "활발함", rarity = 1, catDescription = "밝고 활발한 주황색 고양이" },
-            new CatData { catId = 2, catName = "검은고양이", breed = "검은 고양이", personality = "신비로움", rarity = 1, catDescription = "신비로운 검은색 고양이" },
-            new CatData { catId = 3, catName = "흰눈이", breed = "페르시안", personality = "우아함", rarity = 1, catDescription = "우아한 흰색 고양이" },
-            new CatData { catId = 4, catName = "얼룩이", breed = "길냥이", personality = "장난꾸러기", rarity = 1, catDescription = "장난을 좋아하는 얼룩 고양이" },
-            new CatData { catId = 5, catName = "회색이", breed = "러시안 블루", personality = "조용함", rarity = 1, catDescription = "조용하고 차분한 회색 고양이" },
-
-            // Tier 2: Uncommon (5마리)
-            new CatData { catId = 6, catName = "금눈이", breed = "벵갈", personality = "지능적", rarity = 2, catDescription = "지능적이고 호기심 많은 고양이" },
-            new CatData { catId = 7, catName = "복슬이", breed = "메인쿤", personality = "친절함", rarity = 2, catDescription = "크고 친절한 메인쿤" },
-            new CatData { catId = 8, catName = "미니미", breed = "싱가푸라", personality = "귀여움", rarity = 2, catDescription = "작고 귀여운 싱가푸라" },
-            new CatData { catId = 9, catName = "점박이", breed = "이집션 마우", personality = "민첩함", rarity = 2, catDescription = "민첩하고 빠른 고양이" },
-            new CatData { catId = 10, catName = "솜털이", breed = "랙돌", personality = "온순함", rarity = 2, catDescription = "온순하고 부드러운 랙돌" },
-
-            // Tier 3: Rare (3마리)
-            new CatData { catId = 11, catName = "황금냥", breed = "버마", personality = "신비로움", rarity = 3, catDescription = "황금빛으로 빛나는 신비한 고양이" },
-            new CatData { catId = 12, catName = "보라냥", breed = "코랫", personality = "우아함", rarity = 3, catDescription = "보라빛 눈을 가진 우아한 고양이" },
-            new CatData { catId = 13, catName = "은색냥", breed = "톤키니즈", personality = "영리함", rarity = 3, catDescription = "은색으로 빛나는 영리한 고양이" },
-
-            // Tier 4: Legendary (2마리)
-            new CatData { catId = 14, catName = "무지개냥", breed = "전설의 고양이", personality = "신성함", rarity = 4, catDescription = "무지개 빛으로 빛나는 전설의 고양이" },
-            new CatData { catId = 15, catName = "달의 고양이", breed = "달의 정령", personality = "신비함", rarity = 4, catDescription = "달빛처럼 빛나는 신비로운 고양이" }
+            new CatData { catId = 1, catName = "나비",    breed = "삼색",       personality = "밝고 활발함",       rarity = 1, catDescription = "네잎클로버 초록 칼라가 트레이드마크인 삼색이." },
+            new CatData { catId = 2, catName = "벨라",    breed = "흰털 공주",  personality = "우아하고 도도함",   rarity = 1, catDescription = "흰털에 핑크 리본을 단 공주님." },
+            new CatData { catId = 3, catName = "사미",    breed = "시암",       personality = "신비롭고 영리함",   rarity = 1, catDescription = "파란 눈에 파란 칼라를 두른 시암 출신." },
+            new CatData { catId = 4, catName = "호두",    breed = "태비",       personality = "차분하고 지혜로움", rarity = 1, catDescription = "머스타드 스카프를 두른 태비. 카페의 지주." },
+            new CatData { catId = 5, catName = "구름이",  breed = "회색 단모종", personality = "온순하고 포근함",   rarity = 1, catDescription = "비 오는 날 처마 밑에서 발견된 회색 고양이. 파란 스카프." }
         };
 
         // 초기화: 모든 고양이를 미수집 상태로

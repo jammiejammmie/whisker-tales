@@ -61,10 +61,10 @@ namespace WhiskerTales.Cafe
         {
             // 5마리 고양이에 대응하는 5명의 단골 손님 생성
             CreateCustomer(1, "미라", Constants.CAT_NABI, 100, 2);
-            CreateCustomer(2, "준호", Constants.CAT_LUNA, 120, 3);
-            CreateCustomer(3, "지은", Constants.CAT_MUNGCHI, 80, 1);
+            CreateCustomer(2, "준호", Constants.CAT_BELLA, 120, 3);
+            CreateCustomer(3, "지은", Constants.CAT_SAMI, 80, 1);
             CreateCustomer(4, "철수", Constants.CAT_HODU, 150, 4);
-            CreateCustomer(5, "영희", Constants.CAT_CHOCO, 110, 2);
+            CreateCustomer(5, "영희", Constants.CAT_GUREUMI, 110, 2);
 
             Debug.Log($"[RegularCustomerSystem] {customers.Count} customers initialized");
         }

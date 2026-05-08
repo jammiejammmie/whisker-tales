@@ -55,10 +55,10 @@ namespace WhiskerTales.Utilities
 
         // ===== 고양이 ID =====
         public const int CAT_NABI = 1;                      // 나비
-        public const int CAT_LUNA = 2;                      // 루나
-        public const int CAT_MUNGCHI = 3;                   // 뭉치
+        public const int CAT_BELLA = 2;                     // 벨라
+        public const int CAT_SAMI = 3;                      // 사미
         public const int CAT_HODU = 4;                      // 호두
-        public const int CAT_CHOCO = 5;                     // 초코
+        public const int CAT_GUREUMI = 5;                   // 구름이
 
         // ===== 난이도 =====
         public const int DIFFICULTY_EASY = 1;              // 쉬움

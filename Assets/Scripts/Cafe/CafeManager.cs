@@ -208,7 +208,7 @@ namespace WhiskerTales.Cafe
         private void UnlockCatForArea(int areaId)
         {
             // 구역별 고양이 언락 (예시)
-            int catIdToUnlock = areaId + 1; // 구역 1 완료 → 루나(2) 언락, 구역 2 완료 → 뭉치(3) 언락 등
+            int catIdToUnlock = areaId + 1; // 구역 1 완료 → 벨라(2) 언락, 구역 2 완료 → 사미(3) 언락 등
 
             if (catIdToUnlock <= Constants.TOTAL_CATS)
             {
