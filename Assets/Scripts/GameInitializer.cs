@@ -3,6 +3,7 @@
 
 using UnityEngine;
 
+[DefaultExecutionOrder(-300)]
 public class GameInitializer : MonoBehaviour
 {
     void Awake()

@@ -9,6 +9,7 @@ namespace WhiskerTales.Cafe
     /// 카페 복원 시스템 관리
     /// 복원 작업, 가구 배치, 단골 손님 등 관리
     /// </summary>
+    [DefaultExecutionOrder(-100)]
     public class CafeManager : MonoBehaviour
     {
         public static CafeManager Instance { get; private set; }

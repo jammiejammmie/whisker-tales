@@ -9,6 +9,7 @@ namespace WhiskerTales.Cat
     /// 고양이 시스템 관리
     /// 고양이 데이터, 호감도, 언락 관리
     /// </summary>
+    [DefaultExecutionOrder(-100)]
     public class CatManager : MonoBehaviour
     {
         public static CatManager Instance { get; private set; }

@@ -9,6 +9,7 @@ namespace WhiskerTales.Cafe
     /// 단골 손님 시스템
     /// 카페에 방문하는 손님들이 보상을 제공
     /// </summary>
+    [DefaultExecutionOrder(-50)]
     public class RegularCustomerSystem : MonoBehaviour
     {
         public static RegularCustomerSystem Instance { get; private set; }

@@ -10,6 +10,7 @@ namespace WhiskerTales.Core
     /// 게임 데이터 저장 및 로드 관리
     /// JSON 직렬화 사용
     /// </summary>
+    [DefaultExecutionOrder(-200)]
     public class DataManager : MonoBehaviour
     {
         public static DataManager Instance { get; private set; }

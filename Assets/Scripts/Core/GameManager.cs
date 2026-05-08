@@ -8,6 +8,7 @@ namespace WhiskerTales.Core
     /// 게임 전체 상태 및 생명주기 관리
     /// 싱글톤 패턴 사용
     /// </summary>
+    [DefaultExecutionOrder(-150)]
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }
