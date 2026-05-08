@@ -141,7 +141,6 @@ public class CAT_DEX_INTEGRATION
  * 
  * 1. 고양이 이미지 준비
  *    - 각 고양이마다 512x512 PNG 이미지 준비
- *    - Assets/Art/Cats 폴더에 저장
  *    - Sprite로 import 설정
  * 
  * 2. 고양이 울음소리
