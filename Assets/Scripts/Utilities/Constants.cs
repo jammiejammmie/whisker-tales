@@ -101,44 +101,6 @@ namespace WhiskerTales.Utilities
     }
 
     /// <summary>
-    /// 레벨 목표 타입
-    /// </summary>
-    public enum LevelGoalType
-    {
-        RemoveBlocks,      // 블록 제거
-        CollectItems,      // 아이템 수집
-        ReachScore,        // 점수 달성
-        DestroyObstacles   // 장애물 제거
-    }
-
-    /// <summary>
-    /// 타일 타입
-    /// </summary>
-    public enum TileType
-    {
-        Red,           // 빨강
-        Blue,          // 파랑
-        Green,         // 초록
-        Yellow,        // 노랑
-        Purple,        // 보라
-        Orange,        // 주황
-        Empty,         // 비어있음
-        Obstacle       // 장애물
-    }
-
-    /// <summary>
-    /// 특수 아이템 타입
-    /// </summary>
-    public enum SpecialItemType
-    {
-        None,          // 없음
-        Rocket,        // 로켓
-        Bomb,          // 폭탄
-        Rainbow,       // 무지개
-        Hammer         // 망치
-    }
-
-    /// <summary>
     /// 호감도 레벨
     /// </summary>
     public enum AffinityLevel
@@ -148,16 +110,5 @@ namespace WhiskerTales.Utilities
         Friend,        // 친구 (2)
         BestFriend,    // 단짝 (3)
         Family         // 가족 (4)
-    }
-
-    /// <summary>
-    /// 장애물 타입
-    /// </summary>
-    public enum ObstacleType
-    {
-        Box,           // 상자
-        Ice,           // 얼음
-        Lock,          // 자물쇠
-        Chain          // 사슬
     }
 }
