@@ -53,6 +53,10 @@ public class CafeRestorationManager : MonoBehaviour
     public delegate void OnStageCompleted(int areaId, int stage);
     public event OnStageCompleted StageCompletedEvent;
 
+    public int CurrentAreaId => currentAreaId;
+    public int CurrentStage => currentStage;
+    public string CurrentBackgroundKey => $"bg_zone{currentAreaId}_stage{currentStage}";
+
     private void Awake()
     {
         if (instance == null)
