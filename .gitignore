@@ -32,4 +32,5 @@ Thumbs.db
 *.meta
 !Assets/Scripts/**/*.meta
 !Assets/Editor/**/*.meta
+!Assets/Sprites/**/*.meta
 
