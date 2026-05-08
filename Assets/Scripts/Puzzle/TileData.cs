@@ -1,113 +1,113 @@
 ﻿namespace WhiskerTales.Puzzle
 {
     /// <summary>
-    /// 留ㅼ튂-3 蹂대뱶???????낆쓣 ?뺤쓽?섎뒗 ?닿굅??
-    /// 6媛吏 ?됱긽: ?앹꽑, ?곗쑀, ?몄떎, 罹ｋ떌, 諛쒕룄?? ?앹꽑堉?
+    /// 매치-3 보드의 타일 타입을 정의하는 열거형
+    /// 6가지 종류: 생선, 우유, 털실, 캣닢, 발도장, 생선뼈
     /// </summary>
     public enum TileType
     {
-        /// <summary>?앹꽑 ???/summary>
+        /// <summary>생선 타일</summary>
         Fish = 0,
 
-        /// <summary>?곗쑀 ???/summary>
+        /// <summary>우유 타일</summary>
         Milk = 1,
 
-        /// <summary>?몄떎 ???/summary>
+        /// <summary>털실 타일</summary>
         Yarn = 2,
 
-        /// <summary>罹ｋ떌 ???/summary>
+        /// <summary>캣닢 타일</summary>
         Catnip = 3,
 
-        /// <summary>諛쒕룄?????/summary>
+        /// <summary>발도장 타일</summary>
         Pawprint = 4,
 
-        /// <summary>?앹꽑堉????/summary>
+        /// <summary>생선뼈 타일</summary>
         Fishbone = 5
     }
 
     /// <summary>
-    /// ?뱀닔 ?꾩씠????낆쓣 ?뺤쓽?섎뒗 ?닿굅??
-    /// 留ㅼ튂-3 寃곌낵濡??앹꽦?섎뒗 ?뱀닔 ?꾩씠?쒕뱾
+    /// 특수 아이템 타입을 정의하는 열거형
+    /// 매치-3 결과로 생성되는 특수 아이템들
     /// </summary>
     public enum SpecialItemType
     {
-        /// <summary>?뱀닔 ?꾩씠???놁쓬</summary>
+        /// <summary>특수 아이템 없음</summary>
         None = 0,
 
-        /// <summary>濡쒖폆 (??以??쒓굅)</summary>
+        /// <summary>로켓 (한 줄 제거)</summary>
         Rocket = 1,
 
-        /// <summary>??깂 (3횞3 ?곸뿭 ?쒓굅)</summary>
+        /// <summary>폭탄 (3x3 영역 제거)</summary>
         Bomb = 2,
 
-        /// <summary>臾댁?媛??몄떎 (媛숈? ??紐⑤몢 ?쒓굅)</summary>
+        /// <summary>무지개 털실 (같은 색 모두 제거)</summary>
         Rainbow = 3,
 
-        /// <summary>?λ깷 留앹튂 (?꾩쓽 移??쒓굅)</summary>
+        /// <summary>망치 (임의의 칸 제거)</summary>
         Hammer = 4
     }
 
     /// <summary>
-    /// ?μ븷臾???낆쓣 ?뺤쓽?섎뒗 ?닿굅??
-    /// ?덈꺼??諛곗튂?섎뒗 ?μ븷臾쇰뱾
+    /// 장애물 타입을 정의하는 열거형
+    /// 보드에 배치되는 장애물들
     /// </summary>
     public enum ObstacleType
     {
-        /// <summary>?μ븷臾??놁쓬</summary>
+        /// <summary>장애물 없음</summary>
         None = 0,
 
-        /// <summary>?곸옄 (2???곗튂濡??쒓굅)</summary>
+        /// <summary>상자 (2번 매치로 제거)</summary>
         Box = 1,
 
-        /// <summary>?쇱쓬 (1???곗튂濡??쒓굅)</summary>
+        /// <summary>얼음 (1번 매치로 제거)</summary>
         Ice = 2,
 
-        /// <summary>?먮Ъ??(?쒓굅 遺덇?, 留ㅼ튂 遺덇?)</summary>
+        /// <summary>자물쇠 (제거 불가, 매치 불가)</summary>
         Lock = 3,
 
-        /// <summary>泥댁씤 (?몄젒 ??쇨낵 ?④퍡 ?쒓굅)</summary>
+        /// <summary>체인 (인접 타일과 함께 제거)</summary>
         Chain = 4
     }
 
     /// <summary>
-    /// 留ㅼ튂-3 蹂대뱶??媛쒕퀎 ????곗씠??
-    /// MonoBehaviour瑜??곸냽?섏? ?딅뒗 ?쒖닔 ?곗씠???대옒??
+    /// 매치-3 보드의 개별 타일 데이터
+    /// MonoBehaviour를 상속하지 않는 순수 데이터 클래스
     /// </summary>
     public class TileData
     {
-        /// <summary>??쇱쓽 X 醫뚰몴 (0~7)</summary>
+        /// <summary>타일의 X 좌표 (0~7)</summary>
         public int x;
 
-        /// <summary>??쇱쓽 Y 醫뚰몴 (0~7)</summary>
+        /// <summary>타일의 Y 좌표 (0~7)</summary>
         public int y;
 
-        /// <summary>??쇱쓽 ???(?됱긽)</summary>
+        /// <summary>타일의 타입 (색상)</summary>
         public TileType type;
 
-        /// <summary>??쇱씠 媛吏??뱀닔 ?꾩씠??/summary>
+        /// <summary>타일이 가진 특수 아이템</summary>
         public SpecialItemType specialItem;
 
-        /// <summary>??쇱씠 媛吏??μ븷臾?/summary>
+        /// <summary>타일이 가진 장애물</summary>
         public ObstacleType obstacle;
 
-        /// <summary>?μ븷臾쇱쓽 ?닿뎄??(Box, Ice, Chain ??</summary>
+        /// <summary>장애물의 내구도 (Box, Ice, Chain 등)</summary>
         public int obstacleHealth;
 
-        /// <summary>????쇱씠 留ㅼ튂?섏뿀?붿? ?щ?</summary>
+        /// <summary>이 타일이 매치되었는지 여부</summary>
         public bool isMatched;
 
-        /// <summary>????쇱씠 ?꾩옱 ?대룞 以묒씤吏 ?щ?</summary>
+        /// <summary>이 타일이 현재 이동 중인지 여부</summary>
         public bool isMoving;
 
-        /// <summary>????쇱씠 ?좉꺼?덈뒗吏 ?щ? (Lock ?μ븷臾?</summary>
+        /// <summary>이 타일이 잠겨있는지 여부 (Lock 장애물)</summary>
         public bool isLocked;
 
         /// <summary>
-        /// TileData ?앹꽦??
+        /// TileData 생성자
         /// </summary>
-        /// <param name="x">X 醫뚰몴</param>
-        /// <param name="y">Y 醫뚰몴</param>
-        /// <param name="type">??????/param>
+        /// <param name="x">X 좌표</param>
+        /// <param name="y">Y 좌표</param>
+        /// <param name="type">타일 타입</param>
         public TileData(int x, int y, TileType type)
         {
             this.x = x;
@@ -122,10 +122,10 @@
         }
 
         /// <summary>
-        /// ????쇱씠 ?ㅻⅨ ??쇨낵 ?몄젒?쒖? ?뺤씤
+        /// 이 타일이 다른 타일과 인접한지 확인
         /// </summary>
-        /// <param name="other">鍮꾧탳???ㅻⅨ ???/param>
-        /// <returns>?몄젒?섎㈃ true, ?꾨땲硫?false</returns>
+        /// <param name="other">비교할 다른 타일</param>
+        /// <returns>인접하면 true, 아니면 false</returns>
         public bool IsAdjacentTo(TileData other)
         {
             if (other == null)
