@@ -28,3 +28,8 @@ Thumbs.db
 *.jar
 .lfsconfig
 
+# Unity asset .meta files (keep code .meta tracked to preserve script GUIDs)
+*.meta
+!Assets/Scripts/**/*.meta
+!Assets/Editor/**/*.meta
+
