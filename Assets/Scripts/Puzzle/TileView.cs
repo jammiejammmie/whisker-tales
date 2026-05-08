@@ -19,7 +19,7 @@ namespace WhiskerTales.Puzzle
         private Outline outline;
         private BoardView boardView;
 
-        // TileType 인덱스 → 색상
+        // TileType 인덱스 → 색상 (sprite 미지정 시 fallback)
         private static readonly Color[] TileColors = new Color[]
         {
             new Color(0.30f, 0.55f, 0.95f, 1f), // Fish     - 파랑
@@ -31,6 +31,15 @@ namespace WhiskerTales.Puzzle
         };
 
         private static readonly Color EmptyColor = new Color(0.15f, 0.15f, 0.18f, 0.4f);
+
+        // 모든 TileView 인스턴스가 공유하는 sprite 테이블. TileType 순서와 1:1 대응.
+        // 외부에서 SetTileSprites로 주입. 미주입 시 TileColors fallback으로 렌더링됨.
+        private static Sprite[] s_tileSprites;
+
+        public static void SetTileSprites(Sprite[] sprites)
+        {
+            s_tileSprites = sprites;
+        }
 
         private static Sprite cachedWhiteSprite;
         public static Sprite GetWhiteSprite()
@@ -69,6 +78,7 @@ namespace WhiskerTales.Puzzle
 
             if (data == null)
             {
+                image.sprite = GetWhiteSprite();
                 image.color = EmptyColor;
                 return;
             }
@@ -77,6 +87,17 @@ namespace WhiskerTales.Puzzle
             y = data.y;
 
             int idx = (int)data.type;
+
+            // sprite 주입돼 있으면 sprite로 렌더, color는 흰색(틴팅 없음)
+            if (s_tileSprites != null && idx >= 0 && idx < s_tileSprites.Length && s_tileSprites[idx] != null)
+            {
+                image.sprite = s_tileSprites[idx];
+                image.color = Color.white;
+                return;
+            }
+
+            // 미주입 fallback: 흰 sprite + 타일별 색상
+            image.sprite = GetWhiteSprite();
             if (idx >= 0 && idx < TileColors.Length)
                 image.color = TileColors[idx];
             else
