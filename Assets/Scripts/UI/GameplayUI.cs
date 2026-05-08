@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -21,7 +22,6 @@ namespace WhiskerTales.UI
         private LevelGoal levelGoal;
         private GameManager gameManager;
         private int currentScore = 0;
-        private Tile selectedTile = null;
 
         private void Start()
         {
@@ -47,8 +47,7 @@ namespace WhiskerTales.UI
         {
             if (board != null)
             {
-                board.OnTilesMatched += OnTilesMatched;
-                board.OnBoardChanged += OnBoardChanged;
+                board.OnMatchFound += OnMatchFound;
             }
             if (levelGoal != null)
             {
@@ -59,44 +58,20 @@ namespace WhiskerTales.UI
             }
         }
 
-        public void OnTileClicked(Tile tile)
-        {
-            if (selectedTile == null)
-            {
-                selectedTile = tile;
-                selectedTile.SetSelected(true);
-            }
-            else if (selectedTile == tile)
-            {
-                selectedTile.SetSelected(false);
-                selectedTile = null;
-            }
-            else
-            {
-                if (board.TrySwapTiles(selectedTile, tile))
-                {
-                    if (levelGoal != null) levelGoal.UseMove();
-                }
-                selectedTile.SetSelected(false);
-                selectedTile = null;
-            }
-        }
-
         public void UpdateScore(int score)
         {
             currentScore = score;
             if (scoreText != null) scoreText.text = "Score: " + currentScore;
         }
 
-        private void OnTilesMatched(System.Collections.Generic.List<Tile> matchedTiles)
+        private void OnMatchFound(List<TileData> matchedTiles)
         {
+            if (matchedTiles == null) return;
             int matchScore = matchedTiles.Count * 100;
             currentScore += matchScore;
             if (scoreText != null) scoreText.text = "Score: " + currentScore;
-            if (levelGoal != null) levelGoal.UpdateProgress(matchedTiles);
         }
 
-        private void OnBoardChanged() { UpdateUI(); }
         private void OnProgressChanged(int newProgress) { UpdateUI(); }
         private void OnMovesChanged(int movesUsed, int moveLimit) { UpdateUI(); }
 
@@ -132,8 +107,7 @@ namespace WhiskerTales.UI
         {
             if (board != null)
             {
-                board.OnTilesMatched -= OnTilesMatched;
-                board.OnBoardChanged -= OnBoardChanged;
+                board.OnMatchFound -= OnMatchFound;
             }
             if (levelGoal != null)
             {
