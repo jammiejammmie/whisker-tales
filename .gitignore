@@ -33,6 +33,7 @@ Thumbs.db
 !Assets/Scripts/**/*.meta
 !Assets/Editor/**/*.meta
 !Assets/Sprites/**/*.meta
+!Assets/Fonts/**/*.meta
 
 # Claude Code local settings
 .claude/settings.local.json

@@ -119,86 +119,77 @@ namespace WhiskerTales.Bootstrap
             if (I18nManager.Instance != null)
                 I18nManager.Instance.SetLanguage(Application.systemLanguage);
 
-            InstallKoreanFontFallback();
+            InstallFontFallbacks();
         }
 
         /// <summary>
-        /// LiberationSans SDF (TMP Essentials 기본 폰트)에는 한글 글리프가 없어서
-        /// 한국어 텍스트가 □로 렌더링됨. TMP 3.0.6은 OS 동적 폰트(Font.CreateDynamicFromOSFont)
-        /// 기반으로는 TMP_FontAsset을 못 만들어서, Windows/Fonts의 malgun.ttf를 Assets/Fonts/로
-        /// 복사해 AssetDatabase로 임포트한 뒤 그 Font 에셋으로 CreateFontAsset(Font) 호출.
-        /// 에디터 전용. 런타임 빌드는 별도 처리 필요 (TODO: Addressables 또는 StreamingAssets).
+        /// LiberationSans SDF (TMP Essentials 기본 폰트)는 라틴 글리프만 가지고 있어서
+        /// 한국어/CJK/Devanagari/Thai 등이 □로 렌더링됨. Assets/Fonts/Resources/에 번들된
+        /// Noto Sans 시리즈(Google Fonts OFL)를 Resources.Load로 읽어 동적 TMP_FontAsset 생성,
+        /// TMP_Settings.fallbackFontAssets에 체인 등록. 런타임/APK 빌드 모두 호환.
+        /// 순서는 사용 빈도 우선 (KR → CJK → Latin Extended → Devanagari → Thai).
+        /// RTL(아랍어/히브리어)은 의도적 제외.
         /// </summary>
-        private static void InstallKoreanFontFallback()
+        private static void InstallFontFallbacks()
         {
-#if UNITY_EDITOR
             try
             {
                 if (TMPro.TMP_Settings.fallbackFontAssets == null) return;
-                if (HasKoreanFallback()) return;
 
-                string projectFontPath = "Assets/Fonts/MalgunGothic.ttf";
-
-                if (!System.IO.File.Exists(projectFontPath))
+                string[] fontResourceNames =
                 {
-                    string[] sysCandidates =
+                    "NotoSansKR-Regular",          // Korean
+                    "NotoSansJP-Regular",          // Japanese
+                    "NotoSansSC-Regular",          // Simplified Chinese
+                    "NotoSansTC-Regular",          // Traditional Chinese
+                    "NotoSans-Regular",            // Latin Extended (악센트, 유럽 추가 글리프)
+                    "NotoSansDevanagari-Regular",  // Devanagari (Hindi 등)
+                    "NotoSansThai-Regular",        // Thai
+                };
+
+                int registered = 0, skipped = 0, failed = 0;
+                foreach (string resName in fontResourceNames)
+                {
+                    string assetName = $"NotoFallback_{resName}";
+                    if (HasFallbackNamed(assetName)) { skipped++; continue; }
+
+                    Font font = Resources.Load<Font>(resName);
+                    if (font == null)
                     {
-                        @"C:\Windows\Fonts\malgun.ttf",
-                        @"C:\Windows\Fonts\malgunbd.ttf",
-                        @"C:\Windows\Fonts\NanumGothic.ttf",
-                        @"C:\Windows\Fonts\gulim.ttc",
-                    };
-                    string sysPath = null;
-                    foreach (string p in sysCandidates) { if (System.IO.File.Exists(p)) { sysPath = p; break; } }
-                    if (sysPath == null)
-                    {
-                        Debug.LogWarning("[AppBootstrap] No Korean OS font available — Korean text may render as □.");
-                        return;
+                        Debug.LogWarning($"[AppBootstrap] Font resource missing: Resources/{resName}");
+                        failed++;
+                        continue;
                     }
 
-                    System.IO.Directory.CreateDirectory("Assets/Fonts");
-                    System.IO.File.Copy(sysPath, projectFontPath, false);
-                    UnityEditor.AssetDatabase.ImportAsset(projectFontPath, UnityEditor.ImportAssetOptions.ForceUpdate);
-                    Debug.Log($"[AppBootstrap] Imported Korean font: {sysPath} -> {projectFontPath}");
+                    TMPro.TMP_FontAsset asset = TMPro.TMP_FontAsset.CreateFontAsset(font);
+                    if (asset == null)
+                    {
+                        Debug.LogWarning($"[AppBootstrap] CreateFontAsset returned null for {resName}");
+                        failed++;
+                        continue;
+                    }
+
+                    asset.name = assetName;
+                    asset.atlasPopulationMode = TMPro.AtlasPopulationMode.Dynamic;
+                    TMPro.TMP_Settings.fallbackFontAssets.Add(asset);
+                    registered++;
                 }
 
-                Font koFont = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>(projectFontPath);
-                if (koFont == null)
-                {
-                    Debug.LogWarning($"[AppBootstrap] LoadAssetAtPath<Font> returned null for {projectFontPath}");
-                    return;
-                }
-
-                TMPro.TMP_FontAsset koAsset = TMPro.TMP_FontAsset.CreateFontAsset(koFont);
-                if (koAsset == null)
-                {
-                    Debug.LogWarning($"[AppBootstrap] CreateFontAsset still returned null for {koFont.name}");
-                    return;
-                }
-
-                koAsset.name = "Korean Fallback (MalgunGothic)";
-                koAsset.atlasPopulationMode = TMPro.AtlasPopulationMode.Dynamic;
-                TMPro.TMP_Settings.fallbackFontAssets.Add(koAsset);
-
-                Debug.Log($"[AppBootstrap] Korean fallback registered: {koAsset.name}");
+                Debug.Log($"[AppBootstrap] Font fallbacks: registered={registered}, skipped={skipped}, failed={failed}");
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[AppBootstrap] Korean font setup failed: {e.GetType().Name}: {e.Message}");
+                Debug.LogWarning($"[AppBootstrap] Font fallback setup failed: {e.GetType().Name}: {e.Message}");
             }
-#else
-            Debug.LogWarning("[AppBootstrap] Korean fallback not available in runtime build (TODO: bundle font via StreamingAssets).");
-#endif
         }
 
-        private static bool HasKoreanFallback()
+        private static bool HasFallbackNamed(string assetName)
         {
             var list = TMPro.TMP_Settings.fallbackFontAssets;
             if (list == null) return false;
             foreach (var f in list)
             {
-                if (f != null && f.name != null && f.name.IndexOf("Korean", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
+                if (f != null && f.name == assetName) return true;
             }
             return false;
         }
