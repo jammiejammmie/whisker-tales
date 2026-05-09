@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using WhiskerTales.Bootstrap;
 using WhiskerTales.Core;
 using WhiskerTales.Utilities;
 
@@ -115,7 +116,12 @@ namespace WhiskerTales.UI
         {
             AudioManager.instance?.PlayButtonClick();
             Hide();
-            GameManager.Instance?.ReturnToMenu();
+            // Phase B §3-1-1: 20% 확률로 디톡스 메시지 모달 → 확인은 메뉴, 쉬어갈게요는 수면 모드.
+            // AppBootstrap이 없으면 (테스트 씬 등) 그냥 메인으로.
+            if (AppBootstrap.Instance != null)
+                AppBootstrap.Instance.RequestPostLevelFlow();
+            else
+                GameManager.Instance?.ReturnToMenu();
         }
     }
 }

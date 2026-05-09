@@ -1,0 +1,14 @@
+{
+  "messages": [
+    { "id": "rest_01",  "ko": "고양이가 잠들었어요. 당신도 쉬어가세요 🐾",
+      "en": "The cat fell asleep. You should rest too 🐾" },
+    { "id": "color_01", "ko": "오늘 당신의 시간은 어떤 빛깔이었나요?",
+      "en": "What color was your day today?" },
+    { "id": "phone_01", "ko": "잠시 폰을 내려놓고, 진짜 당신의 삶을 돌보세요.",
+      "en": "Put down your phone and tend to your real life." },
+    { "id": "block_01", "ko": "막혀도 괜찮아요. 고양이가 기다려줄게요.",
+      "en": "It's okay to be stuck. The cat will wait for you." },
+    { "id": "tv_01",    "ko": "고양이가 TV 보다 잠드는 동안, 당신도 쉬어가세요 🐾",
+      "en": "While the cat falls asleep watching TV, you rest too 🐾" }
+  ]
+}

@@ -10,6 +10,8 @@ using WhiskerTales.Cat;
 using WhiskerTales.Core;
 using WhiskerTales.Currency;
 using WhiskerTales.Puzzle;
+using WhiskerTales.Settings;
+using WhiskerTales.Sleep;
 using WhiskerTales.UI;
 using WhiskerTales.Utilities;
 
@@ -36,6 +38,8 @@ namespace WhiskerTales.Bootstrap
         [SerializeField] private int goalValue = 50;
         [SerializeField] private LevelGoalType goalType = LevelGoalType.RemoveBlocks;
 
+        public static AppBootstrap Instance { get; private set; }
+
         private SpriteLibrary spriteLib;
         private Canvas rootCanvas;
         private RectTransform titlePanel;
@@ -46,11 +50,17 @@ namespace WhiskerTales.Bootstrap
         private RectTransform openingPanel;
         private OpeningScenario openingScenario;
         private LoadingScreen loadingScreen;
+        private DetoxMessageModal detoxModal;
+        private SleepModeScreen sleepModeScreen;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
+        public DetoxMessageModal DetoxModal => detoxModal;
+        public SleepModeScreen SleepScreen => sleepModeScreen;
+
         private void Awake()
         {
+            Instance = this;
             spriteLib = new SpriteLibrary();
             spriteLib.LoadAll();
             TileView.SetTileSprites(spriteLib.tiles);
@@ -64,9 +74,11 @@ namespace WhiskerTales.Bootstrap
             gameplayPanel = BuildGameplayPanel(rootCanvas.transform);
             catRoomPanel  = BuildCatRoomPanel(rootCanvas.transform);
             cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
-            arcadePanel   = BuildArcadePanel(rootCanvas.transform);
-            openingPanel  = BuildOpeningPanel(rootCanvas.transform);
-            loadingScreen = BuildLoadingScreen(rootCanvas.transform);
+            arcadePanel     = BuildArcadePanel(rootCanvas.transform);
+            openingPanel    = BuildOpeningPanel(rootCanvas.transform);
+            loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
+            detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
+            sleepModeScreen = BuildSleepModeScreen(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
@@ -142,6 +154,14 @@ namespace WhiskerTales.Bootstrap
             if (CurrencyManager.Instance == null)
             {
                 managers.AddComponent<CurrencyManager>();
+            }
+            if (SettingsManager.Instance == null)
+            {
+                managers.AddComponent<SettingsManager>();
+            }
+            if (SleepModeManager.Instance == null)
+            {
+                managers.AddComponent<SleepModeManager>();
             }
 
             if (I18nManager.Instance != null)
@@ -1284,6 +1304,184 @@ namespace WhiskerTales.Bootstrap
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
             }
+        }
+
+        // ===== Phase B-2: Detox modal + Sleep mode =====
+
+        /// <summary>
+        /// LevelClearPanel.HandleContinue가 호출. 20% 확률로 디톡스 모달 → 확인=메뉴, 쉬어갈게요=수면 모드.
+        /// 미당첨/디톡스 OFF면 즉시 메인으로.
+        /// </summary>
+        public void RequestPostLevelFlow()
+        {
+            bool shown = detoxModal != null && detoxModal.TryShow(
+                onConfirmAction: () => GameManager.Instance?.ReturnToMenu(),
+                onSleepAction: ShowSleepMode);
+            if (!shown) GameManager.Instance?.ReturnToMenu();
+        }
+
+        public void ShowSleepMode()
+        {
+            if (sleepModeScreen == null) return;
+            sleepModeScreen.gameObject.SetActive(true);
+        }
+
+        private DetoxMessageModal BuildDetoxMessageModal(Transform parent)
+        {
+            // Full-screen overlay panel (hidden default). Center card with message + 2 buttons.
+            RectTransform panel = NewPanel(parent, "DetoxMessageOverlay");
+            panel.gameObject.SetActive(false);
+
+            // Dim backdrop (한지 크림 60% alpha)
+            Image bg = panel.GetComponent<Image>();
+            bg.color = new Color(0.96f, 0.945f, 0.91f, 0.60f);
+            bg.raycastTarget = true;
+
+            // Center card
+            RectTransform card = MakeRT(panel, "Card",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(880, 540));
+            Image cardBg = card.gameObject.AddComponent<Image>();
+            cardBg.sprite = TileView.GetWhiteSprite();
+            cardBg.color = new Color(0.965f, 0.92f, 0.82f, 1f);
+            cardBg.raycastTarget = true;
+
+            // Top divider (small horizontal line)
+            RectTransform divider = MakeRT(card, "Divider",
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -50), new Vector2(640, 6));
+            Image divImg = divider.gameObject.AddComponent<Image>();
+            divImg.sprite = TileView.GetWhiteSprite();
+            divImg.color = new Color(0.545f, 0.451f, 0.333f, 0.7f);
+            divImg.raycastTarget = false;
+
+            TextMeshProUGUI msg = CreateText(card, "MessageText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 50, "");
+            ((RectTransform)msg.transform).offsetMin = new Vector2(60, 180);
+            ((RectTransform)msg.transform).offsetMax = new Vector2(-60, -100);
+            msg.color = new Color(0.20f, 0.18f, 0.15f);
+            msg.fontStyle = FontStyles.Bold;
+            msg.raycastTarget = false;
+
+            // Buttons row
+            Button confirmBtn = CreateButton(card, "ConfirmButton",
+                new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(0, 80), new Vector2(0, 130),
+                "확인", new Color(0.55f, 0.55f, 0.60f, 1f));
+            ((RectTransform)confirmBtn.transform).offsetMin = new Vector2(60, 30);
+            ((RectTransform)confirmBtn.transform).offsetMax = new Vector2(-20, 160);
+
+            Button sleepBtn = CreateButton(card, "SleepButton",
+                new Vector2(0.5f, 0), new Vector2(1, 0), new Vector2(0, 80), new Vector2(0, 130),
+                "쉬어갈게요", new Color(0.91f, 0.659f, 0.486f, 1f));
+            ((RectTransform)sleepBtn.transform).offsetMin = new Vector2(20, 30);
+            ((RectTransform)sleepBtn.transform).offsetMax = new Vector2(-60, 160);
+
+            DetoxMessageModal modal = panel.gameObject.AddComponent<DetoxMessageModal>();
+            InjectField(modal, "root", panel.gameObject);
+            InjectField(modal, "messageText", msg);
+            InjectField(modal, "confirmButton", confirmBtn);
+            InjectField(modal, "sleepButton", sleepBtn);
+
+            return modal;
+        }
+
+        private SleepModeScreen BuildSleepModeScreen(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "SleepModeOverlay");
+            panel.gameObject.SetActive(false);
+
+            Image bg = panel.GetComponent<Image>();
+            // Use zone2 stage5 with 50% black overlay for night feel (per packet §3-1-2 임시 처리).
+            Sprite night = spriteLib.GetBackground(2, 5);
+            if (night != null) { bg.sprite = night; bg.color = new Color(0.18f, 0.18f, 0.22f, 1f); }
+            else { bg.color = new Color(0.10f, 0.12f, 0.18f, 1f); }
+            bg.raycastTarget = true;
+
+            // Tap-to-wake (full-screen, near-invisible) — added FIRST so it's behind cat/TV/labels.
+            GameObject tapGo = new GameObject("TapToWake",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            RectTransform tapRT = tapGo.GetComponent<RectTransform>();
+            tapRT.SetParent(panel, false);
+            tapRT.anchorMin = Vector2.zero; tapRT.anchorMax = Vector2.one;
+            tapRT.offsetMin = Vector2.zero; tapRT.offsetMax = Vector2.zero;
+            Image tapImg = tapGo.GetComponent<Image>();
+            tapImg.sprite = TileView.GetWhiteSprite();
+            tapImg.color = new Color(0, 0, 0, 0.001f);
+            tapImg.raycastTarget = true;
+            Button tapBtn = tapGo.GetComponent<Button>();
+
+            // TV area (dummy "Nyang TV" panel)
+            RectTransform tv = MakeRT(panel, "TVArea",
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -360), new Vector2(720, 420));
+            Image tvBg = tv.gameObject.AddComponent<Image>();
+            tvBg.sprite = TileView.GetWhiteSprite();
+            tvBg.color = new Color(0.04f, 0.04f, 0.06f, 1f);
+            tvBg.raycastTarget = false;
+            TextMeshProUGUI tvLabel = CreateText(tv, "TVLabel",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 56, "📺 Nyang TV");
+            tvLabel.color = new Color(0.85f, 0.85f, 0.95f, 0.85f);
+            tvLabel.raycastTarget = false;
+
+            // Sleeping cat image (use first unlocked cat — fallback nabi). Sleep PNG isn't in
+            // SpriteLibrary yet, so for now use front portrait scaled down.
+            Image cat = CreateImageObject(panel, "SleepingCat",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -100), new Vector2(560, 560));
+            cat.preserveAspect = true;
+            cat.raycastTarget = false;
+            Sprite catSpr = spriteLib.GetCatPortrait(Constants.CAT_NABI);
+            if (catSpr != null) cat.sprite = catSpr;
+
+            // Purring indicator (bottom)
+            TextMeshProUGUI purrInd = CreateText(panel, "PurringIndicator",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(700, 80),
+                TextAlignmentOptions.Center, 42, "💤 골골송 재생 중");
+            purrInd.color = new Color(0.95f, 0.92f, 0.85f, 0.85f);
+            purrInd.raycastTarget = false;
+
+            // Audio source (loop) for purring
+            AudioSource purring = panel.gameObject.AddComponent<AudioSource>();
+            purring.playOnAwake = false;
+            purring.loop = true;
+            purring.spatialBlend = 0f;
+#if UNITY_EDITOR
+            purring.clip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Cats/cat_purring.wav");
+#endif
+
+            // Reward modal (child of panel, hidden default)
+            RectTransform rewardCard = MakeRT(panel, "RewardModal",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 600));
+            Image rewardBg = rewardCard.gameObject.AddComponent<Image>();
+            rewardBg.sprite = TileView.GetWhiteSprite();
+            rewardBg.color = new Color(0.96f, 0.945f, 0.91f, 1f);
+            rewardBg.raycastTarget = true;
+
+            TextMeshProUGUI rewardTxt = CreateText(rewardCard, "RewardText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 44, "");
+            ((RectTransform)rewardTxt.transform).offsetMin = new Vector2(40, 180);
+            ((RectTransform)rewardTxt.transform).offsetMax = new Vector2(-40, -60);
+            rewardTxt.color = new Color(0.20f, 0.18f, 0.15f);
+            rewardTxt.raycastTarget = false;
+
+            Button rewardConfirm = CreateButton(rewardCard, "RewardConfirm",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 80), new Vector2(420, 130),
+                "확인", new Color(0.91f, 0.659f, 0.486f, 1f));
+
+            rewardCard.gameObject.SetActive(false);
+
+            SleepModeScreen screen = panel.gameObject.AddComponent<SleepModeScreen>();
+            InjectField(screen, "backgroundImage", bg);
+            InjectField(screen, "catImage", cat);
+            InjectField(screen, "tvArea", tv);
+            InjectField(screen, "tvLabel", tvLabel);
+            InjectField(screen, "purringIndicator", purrInd);
+            InjectField(screen, "tapToWakeButton", tapBtn);
+            InjectField(screen, "purringSource", purring);
+            InjectField(screen, "rewardModal", rewardCard.gameObject);
+            InjectField(screen, "rewardText", rewardTxt);
+            InjectField(screen, "rewardConfirmButton", rewardConfirm);
+
+            return screen;
         }
 
         // ===== Phase B-1: Sound / Loading / Currency =====
