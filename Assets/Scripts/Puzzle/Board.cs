@@ -102,8 +102,12 @@ namespace WhiskerTales.Puzzle
             Debug.Log("[Board] Tiles spawned");
         }
 
+        private const int MAX_CASCADE_ITERATIONS = 10;
+
         /// <summary>
-        /// 두 타일 스왑 시도. 매치가 발생하면 보드를 정리하고 진행도/이동을 LevelGoal에 통보
+        /// 두 타일 스왑 시도. 매치가 발생하면 캐스케이드 루프(최대 MAX_CASCADE_ITERATIONS)로
+        /// FillEmpty 후에도 새로 형성된 매치를 모두 처리. LevelGoal.UseMove()는 단 1회만 호출
+        /// (캐스케이드는 같은 한 수의 결과로 취급).
         /// </summary>
         public bool TrySwapTiles(int x1, int y1, int x2, int y2)
         {
@@ -124,67 +128,76 @@ namespace WhiskerTales.Puzzle
 
             SwapTiles(tileA, tileB);
 
-            List<List<TileData>> allMatches = MatchLogic.FindAllMatches(board);
-
-            if (allMatches.Count > 0)
+            List<List<TileData>> currentMatches = MatchLogic.FindAllMatches(board);
+            if (currentMatches.Count == 0)
             {
-                List<TileData> flatRemoved = new List<TileData>();
-                foreach (List<TileData> matches in allMatches)
-                {
-                    OnMatchFound?.Invoke(matches);
-
-                    SpecialItemType special = MatchLogic.GetSpecialItemType(matches);
-                    if (special != SpecialItemType.None)
-                        Debug.Log($"[Board] Special item created: {special}");
-
-                    flatRemoved.AddRange(matches);
-                }
-
-                RemoveMatches(allMatches);
-                ApplyGravity();
-                FillEmpty();
-
-                if (levelGoal != null)
-                {
-                    // Stage 2: 목표 기반 완료/실패
-                    levelGoal.UpdateProgress(flatRemoved);
-                    levelGoal.UseMove();
-
-                    if (levelGoal.IsGoalAchieved())
-                    {
-                        isLevelComplete = true;
-                        starsEarned = levelGoal.CalculateStars();
-                        OnLevelComplete?.Invoke(starsEarned);
-                        Debug.Log($"[Board] Goal achieved. Stars: {starsEarned}");
-                    }
-                    else if (levelGoal.IsMovesExceeded())
-                    {
-                        OnLevelFailed?.Invoke();
-                        Debug.Log("[Board] Moves exhausted before goal achieved");
-                    }
-                }
-                else
-                {
-                    // 레거시: 이동 소진 = 클리어
-                    movesUsed++;
-                    if (movesUsed >= moveLimit)
-                    {
-                        isLevelComplete = true;
-                        starsEarned = CalculateStarsLegacy();
-                        OnLevelComplete?.Invoke(starsEarned);
-                        Debug.Log($"[Board] Level complete (legacy). Stars: {starsEarned}");
-                    }
-                }
-
-                return true;
-            }
-            else
-            {
-                // 매치 없음 → 스왑 취소 (이동 횟수도 차감하지 않음)
+                // 매치 없음 → 스왑 취소
                 SwapTiles(tileA, tileB);
                 Debug.Log("[Board] No match, swap cancelled");
                 return false;
             }
+
+            // 캐스케이드 루프: 매치 처리 → 중력 → 채우기 → 다시 검사. 새로 형성된 매치도 모두 소비.
+            List<TileData> cumulativeRemoved = new List<TileData>();
+            int cascade = 0;
+            while (currentMatches.Count > 0 && cascade < MAX_CASCADE_ITERATIONS)
+            {
+                foreach (List<TileData> matches in currentMatches)
+                {
+                    OnMatchFound?.Invoke(matches);
+
+                    SpecialItemType detected = MatchLogic.GetSpecialItemType(matches);
+                    if (detected != SpecialItemType.None)
+                        Debug.Log($"[Board] Special pattern detected (cascade {cascade}): {detected}");
+
+                    cumulativeRemoved.AddRange(matches);
+                }
+
+                RemoveMatches(currentMatches);
+                ApplyGravity();
+                FillEmpty();
+                cascade++;
+
+                currentMatches = MatchLogic.FindAllMatches(board);
+            }
+
+            if (cascade > 1)
+                Debug.Log($"[Board] Cascade resolved in {cascade} iteration(s), {cumulativeRemoved.Count} tiles total");
+            if (cascade >= MAX_CASCADE_ITERATIONS)
+                Debug.LogWarning($"[Board] Cascade hit max iterations ({MAX_CASCADE_ITERATIONS})");
+
+            if (levelGoal != null)
+            {
+                // Stage 2: 목표 기반 완료/실패. UseMove는 캐스케이드 횟수와 무관하게 1회.
+                levelGoal.UpdateProgress(cumulativeRemoved);
+                levelGoal.UseMove();
+
+                if (levelGoal.IsGoalAchieved())
+                {
+                    isLevelComplete = true;
+                    starsEarned = levelGoal.CalculateStars();
+                    OnLevelComplete?.Invoke(starsEarned);
+                    Debug.Log($"[Board] Goal achieved. Stars: {starsEarned}");
+                }
+                else if (levelGoal.IsMovesExceeded())
+                {
+                    OnLevelFailed?.Invoke();
+                    Debug.Log("[Board] Moves exhausted before goal achieved");
+                }
+            }
+            else
+            {
+                movesUsed++;
+                if (movesUsed >= moveLimit)
+                {
+                    isLevelComplete = true;
+                    starsEarned = CalculateStarsLegacy();
+                    OnLevelComplete?.Invoke(starsEarned);
+                    Debug.Log($"[Board] Level complete (legacy). Stars: {starsEarned}");
+                }
+            }
+
+            return true;
         }
 
         public List<TileData> FindMatches()
