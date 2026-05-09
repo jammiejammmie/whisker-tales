@@ -438,7 +438,10 @@ namespace WhiskerTales.Puzzle
                 case SpecialItemType.Bomb:
                     activated = SpecialItem.ActivateBomb(special, board);
                     break;
-                // Rainbow → 후속 commit에서 추가
+                case SpecialItemType.Rainbow:
+                    // partnerColor: 스왑 발화 시 상대 타일 색, 체인 발화 시 자기 타일 색
+                    activated = SpecialItem.ActivateRainbow(board, partnerColor);
+                    break;
                 default:
                     return;
             }
