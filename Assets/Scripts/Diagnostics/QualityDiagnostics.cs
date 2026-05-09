@@ -489,7 +489,7 @@ namespace WhiskerTales.Diagnostics
             r.Add(CAT_PERF, "메모리 사용량", memOk, $"네이티브 할당 = {mb} MB");
 
             // 3. 텍스처 메모리
-            long texMem = Texture.currentTextureMemory;
+            long texMem = (long)Texture.currentTextureMemory;
             long texMb = texMem / (1024 * 1024);
             bool texOk = texMb < 200;
             r.Add(CAT_PERF, "텍스처 메모리", texOk, $"Texture.currentTextureMemory = {texMb} MB");
