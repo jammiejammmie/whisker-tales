@@ -109,9 +109,9 @@ namespace WhiskerTales.UI
             CafeRestorationManager mgr = CafeRestorationManager.instance;
             if (mgr == null) return;
 
-            // Total stars header
+            // Total stars header (icon은 옆에 별도 Image — text는 숫자만)
             int totalStars = GameManager.Instance?.UserProgress?.stars ?? 0;
-            if (totalStarsText != null) totalStarsText.text = $"⭐ {totalStars}";
+            if (totalStarsText != null) totalStarsText.text = totalStars.ToString();
 
             // Background = current zone background (highest unlocked stage)
             if (backgroundImage != null)
@@ -162,7 +162,8 @@ namespace WhiskerTales.UI
             if (stage == null) return;
 
             if (card.descText != null) card.descText.text = stage.description;
-            if (card.starsText != null) card.starsText.text = $"⭐ {stage.starsRequired}";
+            // 별 이모지(⭐) 대신 단순 라벨 — 카드 디자인 갱신 시 icon_star_filled로 추가 가능
+            if (card.starsText != null) card.starsText.text = $"별 {stage.starsRequired}";
 
             bool completed = mgr.IsStageCompleted(card.areaId, card.stageIdx);
             bool current   = mgr.IsStageCurrent(card.areaId, card.stageIdx);

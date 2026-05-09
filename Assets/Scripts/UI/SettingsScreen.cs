@@ -50,6 +50,8 @@ namespace WhiskerTales.UI
 
         [Header("Feedback")]
         [SerializeField] private Button[] starButtons; // 5개
+        [SerializeField] private Sprite starFilledSprite; // §7-2 icon_star_filled.png
+        [SerializeField] private Sprite starEmptySprite;  // §7-2 icon_star_empty.png
         [SerializeField] private TMP_InputField feedbackInput;
         [SerializeField] private Button feedbackSubmitButton;
 
@@ -270,11 +272,22 @@ namespace WhiskerTales.UI
         private void UpdateStarsVisual()
         {
             if (starButtons == null) return;
+            bool useSprites = (starFilledSprite != null && starEmptySprite != null);
             for (int i = 0; i < starButtons.Length; i++)
             {
                 if (starButtons[i] == null) continue;
                 Image img = starButtons[i].GetComponent<Image>();
-                if (img != null) img.color = (i < feedbackStarRating) ? StarFilledColor : StarEmptyColor;
+                if (img == null) continue;
+                bool filled = i < feedbackStarRating;
+                if (useSprites)
+                {
+                    img.sprite = filled ? starFilledSprite : starEmptySprite;
+                    img.color = Color.white;
+                }
+                else
+                {
+                    img.color = filled ? StarFilledColor : StarEmptyColor;
+                }
             }
         }
 

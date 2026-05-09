@@ -251,7 +251,8 @@ namespace WhiskerTales.UI
 
         private void UpdatePeaceUI()
         {
-            if (peacePointText != null) peacePointText.text = $"⭐ {peacePoints}";
+            // 별 이모지 제거 — peacePointText 옆에 icon_star_filled Image가 별도 배치됨 (BuildMeditationGardenPanel)
+            if (peacePointText != null) peacePointText.text = peacePoints.ToString();
         }
 
         private void SavePeacePoints()

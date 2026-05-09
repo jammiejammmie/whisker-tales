@@ -30,6 +30,12 @@ namespace WhiskerTales.Bootstrap
     [DefaultExecutionOrder(-500)]
     public class AppBootstrap : MonoBehaviour
     {
+        // ===== Phase A §7-1 detox copy polish (gameplay UI 상단 카피) =====
+        public const float DETOX_FONT_SIZE = 42f;                                     // 14sp → 16sp 상향 (point 36 → 42)
+        public static readonly Color DETOX_TEXT_COLOR = new Color(0.173f, 0.173f, 0.173f); // #2C2C2C 차콜
+        public const float DETOX_BACKDROP_ALPHA = 0.6f;                               // 한지 크림 60% 알파
+        public static readonly Color DETOX_BACKDROP_RGB = new Color(0.961f, 0.945f, 0.910f); // #F5F1E8
+
         [Header("Initial Screen")]
         [SerializeField] private NavigationTarget initialPanel = NavigationTarget.Title;
 
@@ -302,11 +308,19 @@ namespace WhiskerTales.Bootstrap
             Sprite bgSprite = spriteLib.GetBackground(1, 1);
             if (bgSprite != null) { bg.sprite = bgSprite; bg.color = Color.white; }
 
-            // 💝 Nyangi-heart indicator (top-right). Subscribes to CurrencyManager events.
+            // §7-2 Nyangi-heart indicator (top-right): icon_heart sprite + numeric TMP.
+            // Image and Text live as siblings so emoji □ is fully eliminated.
+            Image heartIcon = CreateImageObject(panel, "NyangiHeartIcon",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-310, -100), new Vector2(60, 60));
+            heartIcon.sprite = spriteLib.iconHeart;
+            heartIcon.preserveAspect = true;
+            heartIcon.raycastTarget = false;
+
             titleNyangiHeartText = CreateText(panel, "NyangiHeartText",
-                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(320, 80),
-                TextAlignmentOptions.Right, 48, "💝 0");
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-180, -100), new Vector2(220, 80),
+                TextAlignmentOptions.Left, 48, "0");
             titleNyangiHeartText.color = new Color(0.95f, 0.40f, 0.55f);
+            titleNyangiHeartText.fontStyle = FontStyles.Bold;
             BindNyangiHeartIndicator();
 
             // ⚙ Settings entry (top-left)
@@ -388,10 +402,22 @@ namespace WhiskerTales.Bootstrap
             Sprite zone1 = spriteLib.GetBackground(1, 1);
             if (zone1 != null) bgImage.sprite = zone1; else bgImage.color = new Color(0.18f, 0.22f, 0.30f, 1f);
 
-            // detox copy under top bar
-            TextMeshProUGUI detox = CreateText(panel, "DetoxCopy",
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -100), new Vector2(-80, 80),
-                TextAlignmentOptions.Center, 36, "");
+            // §7-1 detox copy under top bar — 한지 크림 60% 알파 배경 + 차콜 텍스트 + 폰트 16sp 상향
+            RectTransform detoxBackdrop = MakeRT(panel, "DetoxBackdrop",
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -100), new Vector2(-80, 80));
+            Image detoxBgImg = detoxBackdrop.gameObject.AddComponent<Image>();
+            detoxBgImg.sprite = TileView.GetWhiteSprite();
+            detoxBgImg.color = new Color(DETOX_BACKDROP_RGB.r, DETOX_BACKDROP_RGB.g, DETOX_BACKDROP_RGB.b, DETOX_BACKDROP_ALPHA);
+            detoxBgImg.raycastTarget = false;
+
+            TextMeshProUGUI detox = CreateText(detoxBackdrop, "DetoxCopy",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, DETOX_FONT_SIZE, "");
+            ((RectTransform)detox.transform).offsetMin = new Vector2(20, 6);
+            ((RectTransform)detox.transform).offsetMax = new Vector2(-20, -6);
+            detox.color = DETOX_TEXT_COLOR;
+            detox.fontStyle = FontStyles.Bold;
+            detox.raycastTarget = false;
 
             // top-bar buttons
             Button pauseBtn = CreateButton(panel, "PauseButton",
@@ -793,10 +819,18 @@ namespace WhiskerTales.Bootstrap
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -100), new Vector2(700, 100),
                 TextAlignmentOptions.Center, 60, "Cafe Restoration");
 
+            // §7-2 total stars: icon_star_filled + numeric TMP (no ⭐ emoji)
+            Image totalStarsIcon = CreateImageObject(panel, "TotalStarsIcon",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-310, -100), new Vector2(60, 60));
+            totalStarsIcon.sprite = spriteLib.iconStarFilled;
+            totalStarsIcon.preserveAspect = true;
+            totalStarsIcon.raycastTarget = false;
+
             TextMeshProUGUI totalStars = CreateText(panel, "TotalStars",
-                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(280, 80),
-                TextAlignmentOptions.Right, 50, "⭐ 0");
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-180, -100), new Vector2(220, 80),
+                TextAlignmentOptions.Left, 50, "0");
             totalStars.color = new Color(1f, 0.85f, 0.40f);
+            totalStars.fontStyle = FontStyles.Bold;
 
             // ScrollRect for the 15-card list
             ScrollRect scroll = BuildScrollRect(panel,
@@ -1133,12 +1167,13 @@ namespace WhiskerTales.Bootstrap
             title.fontStyle = FontStyles.Bold;
             title.raycastTarget = false;
 
-            // Paw decoration (top-center of card)
-            TextMeshProUGUI paw = CreateText(rt, "PawTop",
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(120, -30), new Vector2(60, 60),
-                TextAlignmentOptions.Center, 44, "🐾");
-            paw.color = new Color(0.545f, 0.451f, 0.333f, 0.7f);
-            paw.raycastTarget = false;
+            // §7-2 Paw decoration — icon_paw sprite (replaces 🐾 emoji)
+            Image pawIcon = CreateImageObject(rt, "PawTop",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(120, -30), new Vector2(50, 50));
+            pawIcon.sprite = spriteLib.iconPaw;
+            pawIcon.preserveAspect = true;
+            pawIcon.color = new Color(1f, 1f, 1f, 0.7f);
+            pawIcon.raycastTarget = false;
 
             // Lock icon + label for Coming Soon
             Image lockIcon = null;
@@ -1148,17 +1183,12 @@ namespace WhiskerTales.Bootstrap
                 // Dim card
                 cardImg.color = new Color(cardBg.r * 0.85f, cardBg.g * 0.85f, cardBg.b * 0.85f, 1f);
 
-                // Lock icon (rounded rect with 🔒 emoji as fallback)
+                // §7-2 Lock icon — actual icon_lock sprite (replaces 🔒 emoji)
                 lockIcon = CreateImageObject(rt, "LockIcon",
                     new Vector2(0.7f, 0.5f), new Vector2(0.7f, 0.5f), new Vector2(-30, -100), new Vector2(60, 60));
-                lockIcon.color = new Color(0.545f, 0.451f, 0.333f);
-
-                // Use TMP text overlay for the lock glyph (Noto fallback should render 🔒)
-                TextMeshProUGUI lockGlyph = CreateText(lockIcon.transform, "LockGlyph",
-                    new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
-                    TextAlignmentOptions.Center, 40, "🔒");
-                lockGlyph.color = Color.white;
-                lockGlyph.raycastTarget = false;
+                lockIcon.sprite = spriteLib.iconLock;
+                lockIcon.preserveAspect = true;
+                lockIcon.color = Color.white;
 
                 lockLabel = CreateText(rt, "LockLabel",
                     new Vector2(0.7f, 0.5f), new Vector2(0.7f, 0.5f), new Vector2(80, -100), new Vector2(180, 60),
@@ -1425,6 +1455,8 @@ namespace WhiskerTales.Bootstrap
             InjectField(screen, "rateButton", rateBtn);
             InjectField(screen, "versionLabel", versionLabel);
             InjectField(screen, "starButtons", stars);
+            InjectField(screen, "starFilledSprite", spriteLib.iconStarFilled);
+            InjectField(screen, "starEmptySprite", spriteLib.iconStarEmpty);
             InjectField(screen, "feedbackInput", feedbackInput);
             InjectField(screen, "feedbackSubmitButton", feedbackSubmit);
 
@@ -1593,11 +1625,19 @@ namespace WhiskerTales.Bootstrap
                 float xMin = i / 5f, xMax = (i + 1) / 5f;
                 Button b = CreateButton(row, $"Star{i+1}",
                     new Vector2(xMin, 0), new Vector2(xMax, 1), Vector2.zero, Vector2.zero,
-                    "★", new Color(0.55f, 0.55f, 0.60f));
+                    "", Color.white);
                 ((RectTransform)b.transform).offsetMin = new Vector2(10, 15);
                 ((RectTransform)b.transform).offsetMax = new Vector2(-10, -15);
+                // CreateButton auto-creates a Label child — remove since we use sprite-only
+                Transform labelChild = b.transform.Find("Label");
+                if (labelChild != null) UnityEngine.Object.DestroyImmediate(labelChild.gameObject);
                 Image img = b.GetComponent<Image>();
-                if (img != null) img.color = new Color(0.55f, 0.55f, 0.60f);
+                if (img != null)
+                {
+                    img.sprite = spriteLib.iconStarEmpty; // initial empty; SettingsScreen.UpdateStarsVisual swaps
+                    img.preserveAspect = true;
+                    img.color = Color.white;
+                }
                 stars[i] = b;
             }
             return stars;
@@ -1804,9 +1844,16 @@ namespace WhiskerTales.Bootstrap
             title.color = new Color(0.30f, 0.20f, 0.12f);
             title.fontStyle = FontStyles.Bold;
 
+            // §7-2 peace points: icon_star_filled + numeric TMP
+            Image peaceIcon = CreateImageObject(panel, "PeacePointIcon",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-310, -100), new Vector2(60, 60));
+            peaceIcon.sprite = spriteLib.iconStarFilled;
+            peaceIcon.preserveAspect = true;
+            peaceIcon.raycastTarget = false;
+
             TextMeshProUGUI peacePoint = CreateText(panel, "PeacePointText",
-                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(320, 80),
-                TextAlignmentOptions.Right, 48, "⭐ 0");
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-180, -100), new Vector2(220, 80),
+                TextAlignmentOptions.Left, 48, "0");
             peacePoint.color = new Color(0.30f, 0.30f, 0.50f);
             peacePoint.fontStyle = FontStyles.Bold;
 
@@ -2129,7 +2176,7 @@ namespace WhiskerTales.Bootstrap
             CurrencyManager cm = CurrencyManager.Instance;
             if (cm != null)
             {
-                titleNyangiHeartText.text = $"💝 {cm.NyangiHeart}";
+                titleNyangiHeartText.text = cm.NyangiHeart.ToString();
                 cm.OnNyangiHeartChanged -= HandleNyangiHeartChanged;
                 cm.OnNyangiHeartChanged += HandleNyangiHeartChanged;
             }
@@ -2138,7 +2185,7 @@ namespace WhiskerTales.Bootstrap
         private void HandleNyangiHeartChanged(int newValue)
         {
             if (titleNyangiHeartText != null)
-                titleNyangiHeartText.text = $"💝 {newValue}";
+                titleNyangiHeartText.text = newValue.ToString();
         }
 
         // ===== widget helpers =====
@@ -2296,8 +2343,15 @@ namespace WhiskerTales.Bootstrap
         public Dictionary<int, Sprite> catPortraits = new Dictionary<int, Sprite>();
         public Dictionary<int, Sprite> catPlayPortraits = new Dictionary<int, Sprite>();
         public Sprite[] tiles;                    // indexed by TileType enum
-        public Sprite starFilled;
-        public Sprite starEmpty;
+        public Sprite starFilled;                 // procedural placeholder (used by LevelClearPanel etc)
+        public Sprite starEmpty;                  // procedural placeholder
+
+        // Phase A §7-2: PNG icons in Assets/Sprites/Icons/ replacing Unicode emoji
+        public Sprite iconPaw;
+        public Sprite iconLock;
+        public Sprite iconHeart;
+        public Sprite iconStarFilled;
+        public Sprite iconStarEmpty;
 
         public void LoadAll()
         {
@@ -2328,6 +2382,13 @@ namespace WhiskerTales.Bootstrap
             tiles[(int)TileType.Catnip]   = LoadSpriteAt("Assets/Sprites/Tiles/tile_catnip.png");
             tiles[(int)TileType.Pawprint] = LoadSpriteAt("Assets/Sprites/Tiles/tile_pawprint.png");
             tiles[(int)TileType.Fishbone] = LoadSpriteAt("Assets/Sprites/Tiles/tile_fishbone.png");
+
+            // §7-2 PNG icons (paw/lock/heart/star — replace Unicode emoji which Noto fonts don't include)
+            iconPaw         = LoadSpriteAt("Assets/Sprites/Icons/icon_paw.png");
+            iconLock        = LoadSpriteAt("Assets/Sprites/Icons/icon_lock.png");
+            iconHeart       = LoadSpriteAt("Assets/Sprites/Icons/icon_heart.png");
+            iconStarFilled  = LoadSpriteAt("Assets/Sprites/Icons/icon_star_filled.png");
+            iconStarEmpty   = LoadSpriteAt("Assets/Sprites/Icons/icon_star_empty.png");
 #else
             Debug.LogWarning("[SpriteLibrary] Runtime build: Assets/Sprites/* not loadable without Addressables. Using fallback colors.");
             tiles = new Sprite[6];
