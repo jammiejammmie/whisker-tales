@@ -435,7 +435,10 @@ namespace WhiskerTales.Puzzle
                     // legacy — 가로로 폴백
                     activated = SpecialItem.ActivateRocket(special, board, true);
                     break;
-                // Bomb / Rainbow → 후속 commit에서 추가
+                case SpecialItemType.Bomb:
+                    activated = SpecialItem.ActivateBomb(special, board);
+                    break;
+                // Rainbow → 후속 commit에서 추가
                 default:
                     return;
             }
