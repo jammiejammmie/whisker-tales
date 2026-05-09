@@ -1314,6 +1314,7 @@ namespace WhiskerTales.Bootstrap
         /// </summary>
         public void RequestPostLevelFlow()
         {
+            if (detoxModal != null) detoxModal.NotifyLevelCleared();
             bool shown = detoxModal != null && detoxModal.TryShow(
                 onConfirmAction: () => GameManager.Instance?.ReturnToMenu(),
                 onSleepAction: ShowSleepMode);

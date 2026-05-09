@@ -16,7 +16,10 @@ namespace WhiskerTales.UI
     public class DetoxMessageModal : MonoBehaviour
     {
         public const string PREF_LAST_SHOWN = "Detox.LastShownId";
-        public const float TRIGGER_PROBABILITY = 1.00f; // TEMP: testing only — revert to 0.20f after QA
+        public const float TRIGGER_PROBABILITY = 0.33f;
+        // 앱 세션당 최소 N판 클리어 후부터 모달 활성화 (튜토리얼 스팸 방지).
+        // 카운터는 인스턴스 필드라 AppBootstrap이 매 앱 시작마다 새로 빌드하면 자동으로 0으로 리셋됨.
+        public const int MIN_LEVELS_BEFORE_TRIGGER = 3;
 
         [Serializable]
         public class MessageEntry
@@ -41,8 +44,19 @@ namespace WhiskerTales.UI
         private Action onConfirm;
         private Action onSleep;
         private bool entriesLoaded;
+        private int sessionLevelCount;
 
         public bool IsShown => root != null && root.activeSelf;
+        public int SessionLevelCount => sessionLevelCount;
+
+        /// <summary>
+        /// AppBootstrap.RequestPostLevelFlow가 매 레벨 클리어마다 호출. MIN_LEVELS_BEFORE_TRIGGER에
+        /// 도달해야 TryShow가 실제로 확률 체크에 들어감.
+        /// </summary>
+        public void NotifyLevelCleared()
+        {
+            sessionLevelCount++;
+        }
 
         private void EnsureLoaded()
         {
@@ -79,6 +93,7 @@ namespace WhiskerTales.UI
         /// </summary>
         public bool TryShow(Action onConfirmAction, Action onSleepAction)
         {
+            if (sessionLevelCount < MIN_LEVELS_BEFORE_TRIGGER) return false;
             if (SettingsManager.Instance != null && !SettingsManager.Instance.DetoxModeEnabled) return false;
             if (UnityEngine.Random.value > TRIGGER_PROBABILITY) return false;
 
