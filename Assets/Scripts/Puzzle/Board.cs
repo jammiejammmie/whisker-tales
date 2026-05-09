@@ -553,6 +553,88 @@ namespace WhiskerTales.Puzzle
 
         private static bool SameType(TileData t, TileType type) => t != null && t.type == type;
 
+#if UNITY_EDITOR
+        // ===== Editor-only debug API for tests (Tools/Whisker Tales/Test/*) =====
+
+        /// <summary>Test 전용: 빈 보드로 초기화 (random spawn 없음).</summary>
+        public void DebugSetupEmpty(int moveLimitValue = 99)
+        {
+            board = new TileData[BOARD_SIZE, BOARD_SIZE];
+            levelGoal = null;
+            moveLimit = moveLimitValue;
+            movesUsed = 0;
+            starsEarned = 0;
+            isLevelComplete = false;
+            isAnimating = false;
+        }
+
+        /// <summary>Test 전용: 특정 좌표에 타일 직접 배치.</summary>
+        public void DebugSetTile(int x, int y, TileType type, SpecialItemType special = SpecialItemType.None)
+        {
+            if (board == null) DebugSetupEmpty();
+            if (!IsValidPosition(x, y)) return;
+            TileData t = new TileData(x, y, type);
+            t.specialItem = special;
+            board[y, x] = t;
+        }
+
+        /// <summary>Test 전용: 보드 직접 읽기.</summary>
+        public TileData[,] DebugBoard => board;
+
+        /// <summary>
+        /// Test 전용: 현재 보드 상태에서 캐스케이드 루프를 직접 실행.
+        /// TrySwapTiles와 동일한 매치 처리/특수 발화 로직을 사용하지만 swap 없음.
+        /// 반환값: 실행된 캐스케이드 iter 수.
+        /// </summary>
+        public int DebugProcessExistingMatches(int maxIterations = MAX_CASCADE_ITERATIONS)
+        {
+            if (board == null) return 0;
+            int cascade = 0;
+            while (cascade < maxIterations)
+            {
+                List<List<TileData>> currentMatches = MatchLogic.FindAllMatches(board);
+                if (currentMatches.Count == 0) break;
+
+                HashSet<TileData> removalSet = new HashSet<TileData>();
+                foreach (List<TileData> matchGroup in currentMatches)
+                {
+                    SpecialItemType produced = MatchLogic.GetSpecialItemType(matchGroup);
+                    TileData survivor = (produced != SpecialItemType.None)
+                        ? ChooseSurvivor(matchGroup, null)
+                        : null;
+
+                    foreach (TileData tile in matchGroup)
+                    {
+                        if (tile == survivor) continue;
+                        if (tile.specialItem != SpecialItemType.None)
+                            ActivateSpecial(tile, tile.type, removalSet);
+                        removalSet.Add(tile);
+                    }
+
+                    if (survivor != null)
+                    {
+                        survivor.specialItem = produced;
+                        survivor.isMatched = false;
+                    }
+                }
+
+                ResolveChainedSpecials(removalSet);
+
+                foreach (TileData t in removalSet)
+                {
+                    if (t == null) continue;
+                    if (t.x < 0 || t.x >= BOARD_SIZE || t.y < 0 || t.y >= BOARD_SIZE) continue;
+                    if (board[t.y, t.x] == t) board[t.y, t.x] = null;
+                }
+
+                ApplyGravity();
+                FillEmpty();
+                cascade++;
+            }
+            return cascade;
+        }
+#endif
+
         // 레거시 별 계산: 이동 횟수 비율
         private int CalculateStarsLegacy()
         {
