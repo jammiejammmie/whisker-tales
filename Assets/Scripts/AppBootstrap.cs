@@ -40,6 +40,7 @@ namespace WhiskerTales.Bootstrap
         private RectTransform gameplayPanel;
         private RectTransform catRoomPanel;
         private RectTransform cafePanel;
+        private RectTransform arcadePanel;
         private RectTransform openingPanel;
         private OpeningScenario openingScenario;
         private Dictionary<NavigationTarget, RectTransform> panels;
@@ -59,6 +60,7 @@ namespace WhiskerTales.Bootstrap
             gameplayPanel = BuildGameplayPanel(rootCanvas.transform);
             catRoomPanel  = BuildCatRoomPanel(rootCanvas.transform);
             cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
+            arcadePanel   = BuildArcadePanel(rootCanvas.transform);
             openingPanel  = BuildOpeningPanel(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
@@ -67,6 +69,7 @@ namespace WhiskerTales.Bootstrap
                 { NavigationTarget.Gameplay, gameplayPanel },
                 { NavigationTarget.CatRoom,  catRoomPanel },
                 { NavigationTarget.Cafe,     cafePanel },
+                { NavigationTarget.Arcade,   arcadePanel },
             };
 
             if (GameManager.Instance != null)
@@ -276,6 +279,16 @@ namespace WhiskerTales.Bootstrap
                 new Vector2(0, -270), new Vector2(560, 140),
                 "Cafe", new Color(0.50f, 0.78f, 0.55f, 1f));
             cafe.onClick.AddListener(() => GameManager.Instance?.GoToCafe());
+
+            Button arcade = CreateButton(panel, "ArcadeButton",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, -440), new Vector2(560, 140),
+                "오락실", new Color(0.831f, 0.659f, 0.278f, 1f));
+            arcade.onClick.AddListener(() =>
+            {
+                AudioManager.instance?.PlayButtonClick();
+                GameManager.Instance?.RequestNavigation(NavigationTarget.Arcade);
+            });
 
             return panel;
         }
@@ -887,6 +900,181 @@ namespace WhiskerTales.Bootstrap
             scroll.viewport = viewport;
             scroll.content = content;
             return scroll;
+        }
+
+        // ===== ARCADE (Phase B mini-game hub) =====
+
+        private RectTransform BuildArcadePanel(Transform parent)
+        {
+            // Color palette from §5 (한지 크림, 나무톤, 코랄)
+            Color paperBg = new Color(0.96f, 0.945f, 0.91f);
+            Color woodDark = new Color(0.40f, 0.30f, 0.18f);
+            Color cardBg = new Color(0.965f, 0.92f, 0.82f);
+            Color cardBorder = new Color(0.545f, 0.451f, 0.333f);
+            Color titleBrown = new Color(0.30f, 0.20f, 0.12f);
+
+            RectTransform panel = NewPanel(parent, "ArcadePanel");
+            panel.gameObject.SetActive(false);
+            Image bg = panel.GetComponent<Image>();
+            bg.color = paperBg;
+
+            // Back button
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            // Whisker Tales title (top)
+            TextMeshProUGUI title = CreateText(panel, "Title",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -180), new Vector2(800, 200),
+                TextAlignmentOptions.Center, 110, "Whisker Tales");
+            title.fontStyle = FontStyles.Bold;
+            title.color = woodDark;
+
+            // "오늘의 미니게임" subtitle banner
+            RectTransform banner = MakeRT(panel, "SubtitleBanner",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -360), new Vector2(700, 110));
+            Image bannerBg = banner.gameObject.AddComponent<Image>();
+            bannerBg.sprite = TileView.GetWhiteSprite();
+            bannerBg.color = cardBg;
+            bannerBg.raycastTarget = false;
+            TextMeshProUGUI subtitle = CreateText(banner, "SubtitleText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 56, "❀ 오늘의 미니게임 ❀");
+            subtitle.color = titleBrown;
+            subtitle.fontStyle = FontStyles.Bold;
+            subtitle.raycastTarget = false;
+
+            // 3 cards, vertically stacked (anchor center, manual positioning)
+            // Each card: 880 wide, 380 tall. Card centers at y = +280, 0, -280 (from center)
+            var cardData = new (ArcadeScreen.CardKind kind, string title, int catId, float yPos, bool locked)[]
+            {
+                (ArcadeScreen.CardKind.HiddenPicture, "고양이\n숨은그림찾기", Constants.CAT_NABI,    280, false),
+                (ArcadeScreen.CardKind.WhackAMole,    "고양이\n두더지잡기",   Constants.CAT_HODU,    0,   false),
+                (ArcadeScreen.CardKind.ComingSoon,    "Coming\nSoon",       Constants.CAT_GUREUMI, -280, true),
+            };
+
+            var cards = new ArcadeScreen.ArcadeCard[cardData.Length];
+            for (int i = 0; i < cardData.Length; i++)
+            {
+                var d = cardData[i];
+                cards[i] = BuildArcadeCard(panel, d.kind, d.title, d.catId, d.yPos, d.locked,
+                    cardBg, cardBorder, titleBrown);
+            }
+
+            // Footer "내일 또 만나요" with cat icon
+            RectTransform footer = MakeRT(panel, "Footer",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 80), new Vector2(900, 100));
+            TextMeshProUGUI footerText = CreateText(footer, "FooterText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 44, "❀ 내일 또 만나요 🐱 ❀");
+            footerText.color = woodDark;
+            footerText.raycastTarget = false;
+
+            // Attach script + inject
+            ArcadeScreen screen = panel.gameObject.AddComponent<ArcadeScreen>();
+            InjectField(screen, "backButton", backBtn);
+            InjectField(screen, "cards", cards);
+
+            return panel;
+        }
+
+        private ArcadeScreen.ArcadeCard BuildArcadeCard(
+            Transform parent, ArcadeScreen.CardKind kind, string titleText,
+            int catId, float yPos, bool locked,
+            Color cardBg, Color cardBorder, Color titleColor)
+        {
+            // Card root: 880 x 380
+            GameObject cardGo = new GameObject($"Card_{kind}",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            RectTransform rt = cardGo.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0, yPos);
+            rt.sizeDelta = new Vector2(880, 380);
+
+            Image cardImg = cardGo.GetComponent<Image>();
+            cardImg.sprite = TileView.GetWhiteSprite();
+            cardImg.color = cardBg;
+
+            Button cardBtn = cardGo.GetComponent<Button>();
+
+            // Decorative border (slightly inset darker rect via Outline)
+            Outline outline = cardGo.AddComponent<Outline>();
+            outline.effectColor = cardBorder;
+            outline.effectDistance = new Vector2(4, -4);
+
+            // Cat sprite (left ~40% of card)
+            Image catImg = CreateImageObject(rt, "Cat",
+                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(180, 0), new Vector2(320, 320));
+            catImg.preserveAspect = true;
+            catImg.raycastTarget = false;
+            Sprite catSprite = spriteLib.GetCatPortrait(catId);
+            if (catSprite != null) catImg.sprite = catSprite;
+
+            // Subtle scenery backdrop behind cat (small inner rect)
+            Image catBackdrop = CreateImageObject(rt, "CatBackdrop",
+                new Vector2(0, 0), new Vector2(0, 1), new Vector2(180, 0), new Vector2(360, 0));
+            ((RectTransform)catBackdrop.transform).offsetMin = new Vector2(20, 20);
+            ((RectTransform)catBackdrop.transform).offsetMax = new Vector2(-360, -20);
+            catBackdrop.color = new Color(0.85f, 0.78f, 0.62f, 0.6f);
+            catBackdrop.raycastTarget = false;
+            ((RectTransform)catBackdrop.transform).SetSiblingIndex(0); // behind catImg
+
+            // Title text (right side)
+            TextMeshProUGUI title = CreateText(rt, "CardTitle",
+                new Vector2(0.4f, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 76, titleText);
+            ((RectTransform)title.transform).offsetMin = new Vector2(20, 60);
+            ((RectTransform)title.transform).offsetMax = new Vector2(-40, -60);
+            title.color = titleColor;
+            title.fontStyle = FontStyles.Bold;
+            title.raycastTarget = false;
+
+            // Paw decoration (top-center of card)
+            TextMeshProUGUI paw = CreateText(rt, "PawTop",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(120, -30), new Vector2(60, 60),
+                TextAlignmentOptions.Center, 44, "🐾");
+            paw.color = new Color(0.545f, 0.451f, 0.333f, 0.7f);
+            paw.raycastTarget = false;
+
+            // Lock icon + label for Coming Soon
+            Image lockIcon = null;
+            TextMeshProUGUI lockLabel = null;
+            if (locked)
+            {
+                // Dim card
+                cardImg.color = new Color(cardBg.r * 0.85f, cardBg.g * 0.85f, cardBg.b * 0.85f, 1f);
+
+                // Lock icon (rounded rect with 🔒 emoji as fallback)
+                lockIcon = CreateImageObject(rt, "LockIcon",
+                    new Vector2(0.7f, 0.5f), new Vector2(0.7f, 0.5f), new Vector2(-30, -100), new Vector2(60, 60));
+                lockIcon.color = new Color(0.545f, 0.451f, 0.333f);
+
+                // Use TMP text overlay for the lock glyph (Noto fallback should render 🔒)
+                TextMeshProUGUI lockGlyph = CreateText(lockIcon.transform, "LockGlyph",
+                    new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                    TextAlignmentOptions.Center, 40, "🔒");
+                lockGlyph.color = Color.white;
+                lockGlyph.raycastTarget = false;
+
+                lockLabel = CreateText(rt, "LockLabel",
+                    new Vector2(0.7f, 0.5f), new Vector2(0.7f, 0.5f), new Vector2(80, -100), new Vector2(180, 60),
+                    TextAlignmentOptions.Left, 36, "준비중");
+                lockLabel.color = new Color(0.545f, 0.451f, 0.333f);
+                lockLabel.raycastTarget = false;
+            }
+
+            return new ArcadeScreen.ArcadeCard
+            {
+                kind = kind,
+                root = rt,
+                button = cardBtn,
+                titleText = title,
+                lockIcon = lockIcon,
+                lockLabel = lockLabel,
+            };
         }
 
         // ===== OPENING SCENARIO (§4-10) =====

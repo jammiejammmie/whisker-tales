@@ -16,7 +16,8 @@ namespace WhiskerTales.Core
         Friends,
         Cafe,       // 카페 운영 모드
         Gameplay,   // 매치-3 보드
-        Settings
+        Settings,
+        Arcade      // 미니게임 오락실 (§Phase B)
     }
 
     /// <summary>
