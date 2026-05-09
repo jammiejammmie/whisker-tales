@@ -2,7 +2,7 @@
   "cafeAreas": [
     {
       "areaId": 1,
-      "areaName": "입구 마당",
+      "areaName": "뒷마당",
       "stages": [
         {
           "stage": 1,
@@ -38,7 +38,7 @@
     },
     {
       "areaId": 2,
-      "areaName": "카페 본채",
+      "areaName": "입구/외부",
       "stages": [
         {
           "stage": 1,
@@ -74,7 +74,7 @@
     },
     {
       "areaId": 3,
-      "areaName": "뒷마당",
+      "areaName": "실내",
       "stages": [
         {
           "stage": 1,
