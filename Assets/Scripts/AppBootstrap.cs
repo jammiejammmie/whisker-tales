@@ -1301,7 +1301,7 @@ namespace WhiskerTales.Bootstrap
 #endif
         }
 
-        private RectTransform BuildLoadingScreen(Transform parent)
+        private LoadingScreen BuildLoadingScreen(Transform parent)
         {
             RectTransform panel = NewPanel(parent, "LoadingScreenOverlay");
             panel.gameObject.SetActive(false);
@@ -1348,7 +1348,7 @@ namespace WhiskerTales.Bootstrap
             InjectField(ls, "purringSource", purring);
             InjectField(ls, "entries", entries);
 
-            return panel;
+            return ls;
         }
 
         private void BindNyangiHeartIndicator()
