@@ -969,26 +969,45 @@ namespace WhiskerTales.Bootstrap
             subtitle.fontStyle = FontStyles.Bold;
             subtitle.raycastTarget = false;
 
-            // 3 cards, vertically stacked (anchored from TOP — fixed offset regardless of canvas height)
-            // Card height 320, gap 60. Centers at screenY 540 / 920 / 1300 (i.e. anchoredPos -540 / -920 / -1300).
-            var cardData = new (ArcadeScreen.CardKind kind, string title, int catId, float yPosFromTop, bool locked)[]
+            // ScrollRect — fills area below banner to bottom of panel.
+            // Stretch anchors with offsetMin/Max so the rect grows/shrinks with canvas height.
+            ScrollRect scroll = BuildScrollRect(panel, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            RectTransform scrollRT = (RectTransform)scroll.transform;
+            scrollRT.offsetMin = new Vector2(30, 30);
+            scrollRT.offsetMax = new Vector2(-30, -320);
+            RectTransform content = scroll.content;
+            VerticalLayoutGroup vlg = content.GetComponent<VerticalLayoutGroup>();
+            if (vlg != null) vlg.spacing = 40;
+
+            // Hide scrollbar — BuildScrollRect doesn't add one, and ScrollRect's inspector-side
+            // Scrollbar Visibility property only matters when a Scrollbar reference is set.
+            scroll.verticalScrollbar = null;
+            scroll.horizontalScrollbar = null;
+
+            // Cards as scroll content children (sized via LayoutElement, positioned by VerticalLayoutGroup)
+            var cardData = new (ArcadeScreen.CardKind kind, string title, int catId, bool locked)[]
             {
-                (ArcadeScreen.CardKind.HiddenPicture, "고양이\n숨은그림찾기", Constants.CAT_NABI,    -540,  false),
-                (ArcadeScreen.CardKind.WhackAMole,    "고양이\n두더지잡기",   Constants.CAT_HODU,    -920,  false),
-                (ArcadeScreen.CardKind.ComingSoon,    "Coming\nSoon",       Constants.CAT_GUREUMI, -1300, true),
+                (ArcadeScreen.CardKind.HiddenPicture, "고양이\n숨은그림찾기", Constants.CAT_NABI,    false),
+                (ArcadeScreen.CardKind.WhackAMole,    "고양이\n두더지잡기",   Constants.CAT_HODU,    false),
+                (ArcadeScreen.CardKind.ComingSoon,    "Coming\nSoon",       Constants.CAT_GUREUMI, true),
             };
 
             var cards = new ArcadeScreen.ArcadeCard[cardData.Length];
             for (int i = 0; i < cardData.Length; i++)
             {
                 var d = cardData[i];
-                cards[i] = BuildArcadeCard(panel, d.kind, d.title, d.catId, d.yPosFromTop, d.locked,
+                cards[i] = BuildArcadeCard(content, d.kind, d.title, d.catId, d.locked,
                     cardBg, cardBorder, titleBrown);
             }
 
-            // Footer "내일 또 만나요" with cat icon
-            RectTransform footer = MakeRT(panel, "Footer",
-                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 80), new Vector2(900, 100));
+            // Footer as last scroll-content child — scrolls with the cards
+            GameObject footerGo = new GameObject("Footer",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(LayoutElement));
+            RectTransform footer = footerGo.GetComponent<RectTransform>();
+            footer.SetParent(content, false);
+            LayoutElement footerLE = footerGo.GetComponent<LayoutElement>();
+            footerLE.preferredHeight = 100;
+            footerLE.flexibleWidth = 1f;
             TextMeshProUGUI footerText = CreateText(footer, "FooterText",
                 new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
                 TextAlignmentOptions.Center, 44, "❀ 내일 또 만나요 🐱 ❀");
@@ -1005,19 +1024,21 @@ namespace WhiskerTales.Bootstrap
 
         private ArcadeScreen.ArcadeCard BuildArcadeCard(
             Transform parent, ArcadeScreen.CardKind kind, string titleText,
-            int catId, float yPosFromTop, bool locked,
+            int catId, bool locked,
             Color cardBg, Color cardBorder, Color titleColor)
         {
-            // Card root: 880 x 320, top-anchored
+            // Card sized via LayoutElement (height 320, full-width via VerticalLayoutGroup childForceExpandWidth)
             GameObject cardGo = new GameObject($"Card_{kind}",
-                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
             RectTransform rt = cardGo.GetComponent<RectTransform>();
             rt.SetParent(parent, false);
-            rt.anchorMin = new Vector2(0.5f, 1f);
-            rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(0, yPosFromTop);
-            rt.sizeDelta = new Vector2(880, 320);
+            // VerticalLayoutGroup will override anchoredPosition + sizeDelta. Just keep sane defaults.
+            rt.sizeDelta = new Vector2(0, 320);
+
+            LayoutElement le = cardGo.GetComponent<LayoutElement>();
+            le.minHeight = 320;
+            le.preferredHeight = 320;
+            le.flexibleWidth = 1f;
 
             Image cardImg = cardGo.GetComponent<Image>();
             cardImg.sprite = TileView.GetWhiteSprite();
