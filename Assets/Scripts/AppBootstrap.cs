@@ -923,16 +923,17 @@ namespace WhiskerTales.Bootstrap
                 new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
                 "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
 
-            // Whisker Tales title (top)
+            // Whisker Tales title (top — anchored from top with small offset so it stays visible
+            // regardless of game view aspect/height)
             TextMeshProUGUI title = CreateText(panel, "Title",
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -180), new Vector2(800, 200),
-                TextAlignmentOptions.Center, 110, "Whisker Tales");
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -120), new Vector2(760, 160),
+                TextAlignmentOptions.Center, 96, "Whisker Tales");
             title.fontStyle = FontStyles.Bold;
             title.color = woodDark;
 
             // "오늘의 미니게임" subtitle banner
             RectTransform banner = MakeRT(panel, "SubtitleBanner",
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -360), new Vector2(700, 110));
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -260), new Vector2(660, 90));
             Image bannerBg = banner.gameObject.AddComponent<Image>();
             bannerBg.sprite = TileView.GetWhiteSprite();
             bannerBg.color = cardBg;
@@ -944,20 +945,20 @@ namespace WhiskerTales.Bootstrap
             subtitle.fontStyle = FontStyles.Bold;
             subtitle.raycastTarget = false;
 
-            // 3 cards, vertically stacked (anchor center, manual positioning)
-            // Each card: 880 wide, 380 tall. Card centers at y = +280, 0, -280 (from center)
-            var cardData = new (ArcadeScreen.CardKind kind, string title, int catId, float yPos, bool locked)[]
+            // 3 cards, vertically stacked (anchored from TOP — fixed offset regardless of canvas height)
+            // Card height 320, gap 60. Centers at screenY 540 / 920 / 1300 (i.e. anchoredPos -540 / -920 / -1300).
+            var cardData = new (ArcadeScreen.CardKind kind, string title, int catId, float yPosFromTop, bool locked)[]
             {
-                (ArcadeScreen.CardKind.HiddenPicture, "고양이\n숨은그림찾기", Constants.CAT_NABI,    280, false),
-                (ArcadeScreen.CardKind.WhackAMole,    "고양이\n두더지잡기",   Constants.CAT_HODU,    0,   false),
-                (ArcadeScreen.CardKind.ComingSoon,    "Coming\nSoon",       Constants.CAT_GUREUMI, -280, true),
+                (ArcadeScreen.CardKind.HiddenPicture, "고양이\n숨은그림찾기", Constants.CAT_NABI,    -540,  false),
+                (ArcadeScreen.CardKind.WhackAMole,    "고양이\n두더지잡기",   Constants.CAT_HODU,    -920,  false),
+                (ArcadeScreen.CardKind.ComingSoon,    "Coming\nSoon",       Constants.CAT_GUREUMI, -1300, true),
             };
 
             var cards = new ArcadeScreen.ArcadeCard[cardData.Length];
             for (int i = 0; i < cardData.Length; i++)
             {
                 var d = cardData[i];
-                cards[i] = BuildArcadeCard(panel, d.kind, d.title, d.catId, d.yPos, d.locked,
+                cards[i] = BuildArcadeCard(panel, d.kind, d.title, d.catId, d.yPosFromTop, d.locked,
                     cardBg, cardBorder, titleBrown);
             }
 
@@ -980,19 +981,19 @@ namespace WhiskerTales.Bootstrap
 
         private ArcadeScreen.ArcadeCard BuildArcadeCard(
             Transform parent, ArcadeScreen.CardKind kind, string titleText,
-            int catId, float yPos, bool locked,
+            int catId, float yPosFromTop, bool locked,
             Color cardBg, Color cardBorder, Color titleColor)
         {
-            // Card root: 880 x 380
+            // Card root: 880 x 320, top-anchored
             GameObject cardGo = new GameObject($"Card_{kind}",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             RectTransform rt = cardGo.GetComponent<RectTransform>();
             rt.SetParent(parent, false);
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(0, yPos);
-            rt.sizeDelta = new Vector2(880, 380);
+            rt.anchoredPosition = new Vector2(0, yPosFromTop);
+            rt.sizeDelta = new Vector2(880, 320);
 
             Image cardImg = cardGo.GetComponent<Image>();
             cardImg.sprite = TileView.GetWhiteSprite();
@@ -1007,7 +1008,7 @@ namespace WhiskerTales.Bootstrap
 
             // Cat sprite (left ~40% of card)
             Image catImg = CreateImageObject(rt, "Cat",
-                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(180, 0), new Vector2(320, 320));
+                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(160, 0), new Vector2(260, 260));
             catImg.preserveAspect = true;
             catImg.raycastTarget = false;
             Sprite catSprite = spriteLib.GetCatPortrait(catId);
@@ -1015,9 +1016,9 @@ namespace WhiskerTales.Bootstrap
 
             // Subtle scenery backdrop behind cat (small inner rect)
             Image catBackdrop = CreateImageObject(rt, "CatBackdrop",
-                new Vector2(0, 0), new Vector2(0, 1), new Vector2(180, 0), new Vector2(360, 0));
-            ((RectTransform)catBackdrop.transform).offsetMin = new Vector2(20, 20);
-            ((RectTransform)catBackdrop.transform).offsetMax = new Vector2(-360, -20);
+                new Vector2(0, 0), new Vector2(0, 1), new Vector2(160, 0), new Vector2(300, 0));
+            ((RectTransform)catBackdrop.transform).offsetMin = new Vector2(20, 16);
+            ((RectTransform)catBackdrop.transform).offsetMax = new Vector2(-360, -16);
             catBackdrop.color = new Color(0.85f, 0.78f, 0.62f, 0.6f);
             catBackdrop.raycastTarget = false;
             ((RectTransform)catBackdrop.transform).SetSiblingIndex(0); // behind catImg
@@ -1025,9 +1026,9 @@ namespace WhiskerTales.Bootstrap
             // Title text (right side)
             TextMeshProUGUI title = CreateText(rt, "CardTitle",
                 new Vector2(0.4f, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
-                TextAlignmentOptions.Center, 76, titleText);
-            ((RectTransform)title.transform).offsetMin = new Vector2(20, 60);
-            ((RectTransform)title.transform).offsetMax = new Vector2(-40, -60);
+                TextAlignmentOptions.Center, 62, titleText);
+            ((RectTransform)title.transform).offsetMin = new Vector2(20, 50);
+            ((RectTransform)title.transform).offsetMax = new Vector2(-40, -50);
             title.color = titleColor;
             title.fontStyle = FontStyles.Bold;
             title.raycastTarget = false;
