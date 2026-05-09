@@ -56,10 +56,13 @@ namespace WhiskerTales.Bootstrap
         private MeditationGardenController meditationController;
         private RectTransform photoStudioPanel;
         private PhotoStudioController photoStudioController;
+        private RectTransform settingsPanel;
+        private SettingsScreen settingsScreen;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
         public PhotoStudioController PhotoStudio => photoStudioController;
+        public SettingsScreen Settings => settingsScreen;
 
         public DetoxMessageModal DetoxModal => detoxModal;
         public SleepModeScreen SleepScreen => sleepModeScreen;
@@ -83,6 +86,7 @@ namespace WhiskerTales.Bootstrap
             arcadePanel     = BuildArcadePanel(rootCanvas.transform);
             meditationPanel = BuildMeditationGardenPanel(rootCanvas.transform);
             photoStudioPanel = BuildPhotoStudioPanel(rootCanvas.transform);
+            settingsPanel    = BuildSettingsPanel(rootCanvas.transform);
             openingPanel    = BuildOpeningPanel(rootCanvas.transform);
             loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
@@ -97,6 +101,7 @@ namespace WhiskerTales.Bootstrap
                 { NavigationTarget.Arcade,           arcadePanel },
                 { NavigationTarget.MeditationGarden, meditationPanel },
                 { NavigationTarget.PhotoStudio,      photoStudioPanel },
+                { NavigationTarget.Settings,         settingsPanel },
             };
 
             if (GameManager.Instance != null)
@@ -303,6 +308,16 @@ namespace WhiskerTales.Bootstrap
                 TextAlignmentOptions.Right, 48, "💝 0");
             titleNyangiHeartText.color = new Color(0.95f, 0.40f, 0.55f);
             BindNyangiHeartIndicator();
+
+            // ⚙ Settings entry (top-left)
+            Button settingsBtn = CreateButton(panel, "SettingsButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(90, -100), new Vector2(120, 120),
+                "⚙", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+            settingsBtn.onClick.AddListener(() =>
+            {
+                AudioManager.instance?.PlayButtonClick();
+                GameManager.Instance?.RequestNavigation(NavigationTarget.Settings);
+            });
 
             CreateText(panel, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(0, -200), new Vector2(900, 220), TextAlignmentOptions.Center, 110, "Whisker Tales");
@@ -1324,6 +1339,316 @@ namespace WhiskerTales.Bootstrap
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
             }
+        }
+
+        // ===== Phase B-3/B-4: Settings (§3-5) =====
+
+        private RectTransform BuildSettingsPanel(Transform parent)
+        {
+            Color paperBg = new Color(0.96f, 0.945f, 0.91f);
+            Color sectionHeaderColor = new Color(0.30f, 0.20f, 0.12f);
+            Color rowBg = new Color(1f, 1f, 1f, 0.6f);
+
+            RectTransform panel = NewPanel(parent, "SettingsPanel");
+            panel.gameObject.SetActive(false);
+            Image bg = panel.GetComponent<Image>();
+            bg.color = paperBg;
+
+            // Top bar
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            CreateText(panel, "Title",
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -100), new Vector2(700, 100),
+                TextAlignmentOptions.Center, 60, "설정")
+                .color = sectionHeaderColor;
+
+            // ScrollRect for sections
+            ScrollRect scroll = BuildScrollRect(panel, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            RectTransform scrollRT = (RectTransform)scroll.transform;
+            scrollRT.offsetMin = new Vector2(40, 30);
+            scrollRT.offsetMax = new Vector2(-40, -200);
+            scroll.verticalScrollbar = null;
+            scroll.horizontalScrollbar = null;
+            RectTransform content = scroll.content;
+            VerticalLayoutGroup vlg = content.GetComponent<VerticalLayoutGroup>();
+            if (vlg != null) { vlg.spacing = 16; vlg.padding = new RectOffset(16, 16, 16, 16); }
+
+            // ===== 알림 =====
+            BuildSectionHeader(content, "🔔 알림", sectionHeaderColor);
+            (Button dailyBtn, TMP_Text dailyLabel) = BuildToggleRow(content, "일일 알림", rowBg);
+
+            // ===== 사운드 =====
+            BuildSectionHeader(content, "🔊 사운드", sectionHeaderColor);
+            Slider bgmSlider = BuildSliderRow(content, "BGM 볼륨", rowBg);
+            Slider sfxSlider = BuildSliderRow(content, "효과음 볼륨", rowBg);
+            (Button smNorm, Button smCat, Button smMute) = BuildThreeWayRow(content, "사운드 모드", rowBg, "일반", "고양이", "음소거");
+
+            // ===== 디톡스 =====
+            BuildSectionHeader(content, "🌙 디톡스", sectionHeaderColor);
+            (Button detoxBtn, TMP_Text detoxLabel) = BuildToggleRow(content, "디톡스 모드", rowBg);
+
+            // ===== 언어 =====
+            BuildSectionHeader(content, "🌐 언어", sectionHeaderColor);
+            (Button langKo, Button langEn) = BuildTwoWayRow(content, "언어 선택", rowBg, "한국어", "English");
+
+            // ===== 정보 / 외부 =====
+            BuildSectionHeader(content, "📜 정보", sectionHeaderColor);
+            Button privacyBtn = BuildLinkRow(content, "개인정보처리방침", rowBg);
+            Button mailBtn    = BuildLinkRow(content, "📧 문의하기", rowBg);
+            Button rateBtn    = BuildLinkRow(content, "⭐ 앱 평가하기", rowBg);
+            TMP_Text versionLabel = BuildTextRow(content, "버전", "v1.0.0", rowBg);
+
+            // ===== 피드백 =====
+            BuildSectionHeader(content, "💌 피드백", sectionHeaderColor);
+            Button[] stars = BuildStarRow(content, rowBg);
+            TMP_InputField feedbackInput = BuildInputRow(content, "한 줄 피드백을 남겨주세요...");
+            Button feedbackSubmit = BuildSubmitRow(content, "제출");
+
+            // Attach script + inject
+            SettingsScreen screen = panel.gameObject.AddComponent<SettingsScreen>();
+            InjectField(screen, "backButton", backBtn);
+            InjectField(screen, "dailyNotificationToggleButton", dailyBtn);
+            InjectField(screen, "dailyNotificationLabel", dailyLabel);
+            InjectField(screen, "bgmSlider", bgmSlider);
+            InjectField(screen, "sfxSlider", sfxSlider);
+            InjectField(screen, "soundModeNormalButton", smNorm);
+            InjectField(screen, "soundModeCatButton", smCat);
+            InjectField(screen, "soundModeMuteButton", smMute);
+            InjectField(screen, "detoxToggleButton", detoxBtn);
+            InjectField(screen, "detoxLabel", detoxLabel);
+            InjectField(screen, "langKoButton", langKo);
+            InjectField(screen, "langEnButton", langEn);
+            InjectField(screen, "privacyButton", privacyBtn);
+            InjectField(screen, "mailButton", mailBtn);
+            InjectField(screen, "rateButton", rateBtn);
+            InjectField(screen, "versionLabel", versionLabel);
+            InjectField(screen, "starButtons", stars);
+            InjectField(screen, "feedbackInput", feedbackInput);
+            InjectField(screen, "feedbackSubmitButton", feedbackSubmit);
+
+            settingsScreen = screen;
+            return panel;
+        }
+
+        // ===== Settings row builders =====
+
+        private void BuildSectionHeader(Transform parent, string label, Color color)
+        {
+            GameObject go = new GameObject($"Section_{label}", typeof(RectTransform), typeof(LayoutElement));
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            LayoutElement le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = 60; le.flexibleWidth = 1f;
+            TextMeshProUGUI text = CreateText(rt, "Header",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Left, 44, label);
+            text.fontStyle = FontStyles.Bold;
+            text.color = color;
+            text.raycastTarget = false;
+        }
+
+        private RectTransform BuildBaseRow(Transform parent, Color rowBg, float height = 100f)
+        {
+            GameObject go = new GameObject("Row", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            LayoutElement le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = height; le.flexibleWidth = 1f;
+            Image img = go.GetComponent<Image>();
+            img.sprite = TileView.GetWhiteSprite();
+            img.color = rowBg;
+            return rt;
+        }
+
+        private (Button, TMP_Text) BuildToggleRow(Transform parent, string label, Color rowBg)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg);
+            CreateText(row, "Label",
+                new Vector2(0, 0), new Vector2(0.6f, 1), new Vector2(0, 0), new Vector2(-30, 0),
+                TextAlignmentOptions.Left, 36, label).color = new Color(0.20f, 0.20f, 0.25f);
+            ((RectTransform)row.GetChild(0)).offsetMin = new Vector2(30, 0);
+            ((RectTransform)row.GetChild(0)).offsetMax = new Vector2(-10, 0);
+
+            Button toggle = CreateButton(row, "Toggle",
+                new Vector2(0.7f, 0.5f), new Vector2(1, 0.5f), new Vector2(-20, 0), new Vector2(0, 70),
+                "", new Color(0.483f, 0.722f, 0.553f));
+            ((RectTransform)toggle.transform).offsetMin = new Vector2(0, -35);
+            ((RectTransform)toggle.transform).offsetMax = new Vector2(-30, 35);
+
+            // Replace auto Label with our own (so we can grab a ref)
+            Transform autoLabel = toggle.transform.Find("Label");
+            if (autoLabel != null) UnityEngine.Object.DestroyImmediate(autoLabel.gameObject);
+            TMP_Text labelText = CreateText(toggle.transform, "ToggleLabel",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 36, "ON");
+            labelText.color = Color.white;
+            labelText.raycastTarget = false;
+
+            return (toggle, labelText);
+        }
+
+        private Slider BuildSliderRow(Transform parent, string label, Color rowBg)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg, 110f);
+            CreateText(row, "Label",
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -8), new Vector2(0, 40),
+                TextAlignmentOptions.Left, 32, label).color = new Color(0.20f, 0.20f, 0.25f);
+            ((RectTransform)row.GetChild(0)).offsetMin = new Vector2(30, -45);
+            ((RectTransform)row.GetChild(0)).offsetMax = new Vector2(-10, -5);
+
+            Slider s = CreateSlider(row, "Slider",
+                new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 30), new Vector2(0, 36));
+            RectTransform srt = (RectTransform)s.transform;
+            srt.anchorMin = new Vector2(0, 0); srt.anchorMax = new Vector2(1, 0);
+            srt.offsetMin = new Vector2(30, 18); srt.offsetMax = new Vector2(-30, 54);
+            s.minValue = 0; s.maxValue = 1; s.interactable = true;
+            return s;
+        }
+
+        private (Button, Button, Button) BuildThreeWayRow(Transform parent, string label, Color rowBg, string a, string b, string c)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg, 130f);
+            CreateText(row, "Label",
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -8), new Vector2(0, 40),
+                TextAlignmentOptions.Left, 32, label).color = new Color(0.20f, 0.20f, 0.25f);
+            ((RectTransform)row.GetChild(0)).offsetMin = new Vector2(30, -45);
+            ((RectTransform)row.GetChild(0)).offsetMax = new Vector2(-10, -5);
+
+            Button bA = CreateButton(row, "OptA",
+                new Vector2(0, 0), new Vector2(0.333f, 0), new Vector2(0, 30), new Vector2(0, 60),
+                a, new Color(0.55f, 0.55f, 0.60f));
+            ((RectTransform)bA.transform).offsetMin = new Vector2(30, 15);
+            ((RectTransform)bA.transform).offsetMax = new Vector2(-5, 75);
+            Button bB = CreateButton(row, "OptB",
+                new Vector2(0.333f, 0), new Vector2(0.667f, 0), new Vector2(0, 30), new Vector2(0, 60),
+                b, new Color(0.55f, 0.55f, 0.60f));
+            ((RectTransform)bB.transform).offsetMin = new Vector2(5, 15);
+            ((RectTransform)bB.transform).offsetMax = new Vector2(-5, 75);
+            Button bC = CreateButton(row, "OptC",
+                new Vector2(0.667f, 0), new Vector2(1, 0), new Vector2(0, 30), new Vector2(0, 60),
+                c, new Color(0.55f, 0.55f, 0.60f));
+            ((RectTransform)bC.transform).offsetMin = new Vector2(5, 15);
+            ((RectTransform)bC.transform).offsetMax = new Vector2(-30, 75);
+            return (bA, bB, bC);
+        }
+
+        private (Button, Button) BuildTwoWayRow(Transform parent, string label, Color rowBg, string a, string b)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg, 130f);
+            CreateText(row, "Label",
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -8), new Vector2(0, 40),
+                TextAlignmentOptions.Left, 32, label).color = new Color(0.20f, 0.20f, 0.25f);
+            ((RectTransform)row.GetChild(0)).offsetMin = new Vector2(30, -45);
+            ((RectTransform)row.GetChild(0)).offsetMax = new Vector2(-10, -5);
+
+            Button bA = CreateButton(row, "OptA",
+                new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(0, 60),
+                a, new Color(0.55f, 0.55f, 0.60f));
+            ((RectTransform)bA.transform).offsetMin = new Vector2(30, 15);
+            ((RectTransform)bA.transform).offsetMax = new Vector2(-10, 75);
+            Button bB = CreateButton(row, "OptB",
+                new Vector2(0.5f, 0), new Vector2(1, 0), new Vector2(0, 30), new Vector2(0, 60),
+                b, new Color(0.55f, 0.55f, 0.60f));
+            ((RectTransform)bB.transform).offsetMin = new Vector2(10, 15);
+            ((RectTransform)bB.transform).offsetMax = new Vector2(-30, 75);
+            return (bA, bB);
+        }
+
+        private Button BuildLinkRow(Transform parent, string label, Color rowBg)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg);
+            Button btn = CreateButton(row, "Link",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                label, new Color(0.40f, 0.62f, 0.95f, 0.85f));
+            ((RectTransform)btn.transform).offsetMin = new Vector2(20, 15);
+            ((RectTransform)btn.transform).offsetMax = new Vector2(-20, -15);
+            return btn;
+        }
+
+        private TMP_Text BuildTextRow(Transform parent, string label, string value, Color rowBg)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg, 80f);
+            CreateText(row, "Label",
+                new Vector2(0, 0), new Vector2(0.5f, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Left, 32, label).color = new Color(0.20f, 0.20f, 0.25f);
+            ((RectTransform)row.GetChild(0)).offsetMin = new Vector2(30, 0);
+            ((RectTransform)row.GetChild(0)).offsetMax = new Vector2(-10, 0);
+            TMP_Text valueText = CreateText(row, "Value",
+                new Vector2(0.5f, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Right, 32, value);
+            valueText.color = new Color(0.50f, 0.50f, 0.55f);
+            ((RectTransform)valueText.transform).offsetMin = new Vector2(10, 0);
+            ((RectTransform)valueText.transform).offsetMax = new Vector2(-30, 0);
+            return valueText;
+        }
+
+        private Button[] BuildStarRow(Transform parent, Color rowBg)
+        {
+            RectTransform row = BuildBaseRow(parent, rowBg, 130f);
+            Button[] stars = new Button[5];
+            for (int i = 0; i < 5; i++)
+            {
+                float xMin = i / 5f, xMax = (i + 1) / 5f;
+                Button b = CreateButton(row, $"Star{i+1}",
+                    new Vector2(xMin, 0), new Vector2(xMax, 1), Vector2.zero, Vector2.zero,
+                    "★", new Color(0.55f, 0.55f, 0.60f));
+                ((RectTransform)b.transform).offsetMin = new Vector2(10, 15);
+                ((RectTransform)b.transform).offsetMax = new Vector2(-10, -15);
+                Image img = b.GetComponent<Image>();
+                if (img != null) img.color = new Color(0.55f, 0.55f, 0.60f);
+                stars[i] = b;
+            }
+            return stars;
+        }
+
+        private TMP_InputField BuildInputRow(Transform parent, string placeholder)
+        {
+            GameObject go = new GameObject("Input", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            LayoutElement le = go.GetComponent<LayoutElement>();
+            le.preferredHeight = 100; le.flexibleWidth = 1f;
+            Image bg = go.GetComponent<Image>();
+            bg.sprite = TileView.GetWhiteSprite();
+            bg.color = new Color(1f, 1f, 1f, 0.85f);
+
+            TMP_InputField input = go.AddComponent<TMP_InputField>();
+
+            // Text Area (viewport)
+            RectTransform textArea = MakeRT(rt, "TextArea",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero);
+            textArea.offsetMin = new Vector2(20, 10); textArea.offsetMax = new Vector2(-20, -10);
+
+            TextMeshProUGUI placeholderText = CreateText(textArea, "Placeholder",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Left, 32, placeholder);
+            placeholderText.color = new Color(0.50f, 0.50f, 0.55f);
+            placeholderText.raycastTarget = false;
+
+            TextMeshProUGUI textComp = CreateText(textArea, "Text",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Left, 32, "");
+            textComp.color = new Color(0.20f, 0.20f, 0.25f);
+            textComp.raycastTarget = false;
+
+            input.textViewport = textArea;
+            input.textComponent = textComp;
+            input.placeholder = placeholderText;
+            input.characterLimit = 200;
+            return input;
+        }
+
+        private Button BuildSubmitRow(Transform parent, string label)
+        {
+            RectTransform row = BuildBaseRow(parent, new Color(0, 0, 0, 0), 100f);
+            Button b = CreateButton(row, "Submit",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                label, new Color(0.95f, 0.55f, 0.30f, 1f));
+            ((RectTransform)b.transform).offsetMin = new Vector2(40, 15);
+            ((RectTransform)b.transform).offsetMax = new Vector2(-40, -15);
+            return b;
         }
 
         // ===== Phase B-3: Photo Studio (§3-4) =====
