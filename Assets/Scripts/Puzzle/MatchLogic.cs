@@ -63,6 +63,30 @@ namespace WhiskerTales.Puzzle
                 }
             }
 
+            // 2×2 정사각 매치 (가로/세로에서 안 잡힌 4타일 동일 타입 정사각형)
+            for (int y = 0; y < rows - 1; y++)
+            {
+                for (int x = 0; x < cols - 1; x++)
+                {
+                    TileData tl = board[y, x];
+                    TileData tr = board[y, x + 1];
+                    TileData bl = board[y + 1, x];
+                    TileData br = board[y + 1, x + 1];
+                    if (tl == null || tr == null || bl == null || br == null) continue;
+                    if (tl.isLocked || tr.isLocked || bl.isLocked || br.isLocked) continue;
+                    if (tl.type != tr.type || tl.type != bl.type || tl.type != br.type) continue;
+                    // 4타일이 이미 모두 가로/세로 매치에 잡혔으면 패스 (중복 회피)
+                    if (matched[y, x] && matched[y, x + 1] && matched[y + 1, x] && matched[y + 1, x + 1]) continue;
+
+                    List<TileData> square = new List<TileData> { tl, tr, bl, br };
+                    matched[y, x] = true;
+                    matched[y, x + 1] = true;
+                    matched[y + 1, x] = true;
+                    matched[y + 1, x + 1] = true;
+                    allMatches.Add(square);
+                }
+            }
+
             return allMatches;
         }
 
@@ -176,9 +200,27 @@ namespace WhiskerTales.Puzzle
             {
                 if (IsHorizontalMatch(matches)) return SpecialItemType.RocketHorizontal;
                 if (IsVerticalMatch(matches))   return SpecialItemType.RocketVertical;
+                if (Is2x2Match(matches))        return SpecialItemType.RocketHorizontal; // 정사각 → 가로 로켓 기본값
             }
 
             return SpecialItemType.None;
+        }
+
+        /// <summary>4타일이 2×2 정사각형 배치인지.</summary>
+        public static bool Is2x2Match(List<TileData> tiles)
+        {
+            if (tiles == null || tiles.Count != 4) return false;
+            int minX = int.MaxValue, maxX = int.MinValue;
+            int minY = int.MaxValue, maxY = int.MinValue;
+            foreach (TileData t in tiles)
+            {
+                if (t == null) return false;
+                if (t.x < minX) minX = t.x;
+                if (t.x > maxX) maxX = t.x;
+                if (t.y < minY) minY = t.y;
+                if (t.y > maxY) maxY = t.y;
+            }
+            return (maxX - minX == 1) && (maxY - minY == 1);
         }
 
         /// <summary>주어진 타일들이 같은 행에 정렬되어 있는지 (가로 매치).</summary>
