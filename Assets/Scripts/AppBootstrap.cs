@@ -286,7 +286,7 @@ namespace WhiskerTales.Bootstrap
             board.transform.SetParent(panel, false);
             levelGoal.transform.SetParent(panel, false);
 
-            Level level = new Level
+            WhiskerTales.Puzzle.Level level = new WhiskerTales.Puzzle.Level
             {
                 levelId = 1,
                 moveLimit = this.moveLimit,
