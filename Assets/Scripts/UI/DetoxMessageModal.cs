@@ -16,7 +16,7 @@ namespace WhiskerTales.UI
     public class DetoxMessageModal : MonoBehaviour
     {
         public const string PREF_LAST_SHOWN = "Detox.LastShownId";
-        public const float TRIGGER_PROBABILITY = 0.20f;
+        public const float TRIGGER_PROBABILITY = 1.00f; // TEMP: testing only — revert to 0.20f after QA
 
         [Serializable]
         public class MessageEntry
