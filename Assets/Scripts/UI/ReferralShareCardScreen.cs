@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using WhiskerTales.Core;
+using WhiskerTales.Heart;
 using WhiskerTales.Referral;
 
 namespace WhiskerTales.UI
@@ -73,6 +74,14 @@ namespace WhiskerTales.UI
             // NativeShare 플러그인 미설치 — 통합 시 다음 한 줄 활성화:
             //   new NativeShare().SetText(shareText).Share();
             Debug.Log($"[ShareCard] (Stub) Share text:\n{shareText}");
+
+            // §C-4: SNS 공유 → 하트 +1 (1일 1회)
+            bool granted = HeartRechargeManager.Instance != null
+                        && HeartRechargeManager.Instance.TryAwardShareHeart();
+            if (granted)
+            {
+                Debug.Log("[ShareCard] +1 heart granted from share (daily cap)");
+            }
         }
 
         public static string BuildShareText(string code)

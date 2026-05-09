@@ -8,10 +8,11 @@ using WhiskerTales.Utilities;
 namespace WhiskerTales.Sleep
 {
     /// <summary>
-    /// Phase B §3-1-2. 수면 모드 진입/이탈 관리.
+    /// Phase B §3-1-2 + Phase C-3 idle 보상 통합.
     /// EnterSleepMode: 진입 시간 기록 + 화면 밝기 0.2f.
-    /// ExitSleepMode: 경과 시간으로 보상 계산 후 적용 (+ struct 반환).
-    /// 시간당 멸치 10, 30분당 호감도 +1, 8시간 풀 적립 시 💝 +10.
+    /// ExitSleepMode: 활성 세션의 보상 계산/적용.
+    /// ProcessPendingOfflineSleep: 앱 재시작 시 PREF_ENTRY_TIME가 남아있으면 회수.
+    /// 보상: 시간당 멸치 10, 30분당 호감도 +1, 8시간 풀 시 💝 +10, 매 세션마다 ❤ +2.
     /// </summary>
     [DefaultExecutionOrder(-100)]
     public class SleepModeManager : MonoBehaviour
@@ -22,6 +23,7 @@ namespace WhiskerTales.Sleep
         public const int   ANCHOVY_PER_HOUR   = 10;
         public const float MINUTES_PER_AFFINITY = 30f;
         public const int   NYANGI_HEART_FULL  = 10;
+        public const int   HEARTS_PER_SESSION = 2;       // §C-4: 수면 모드 완료 → 하트 +2
         public const float TARGET_BRIGHTNESS  = 0.2f;
 
         public static SleepModeManager Instance { get; private set; }
@@ -32,6 +34,7 @@ namespace WhiskerTales.Sleep
             public int   anchovies;
             public int   affinity;
             public int   nyangiHeart;
+            public int   hearts;       // §C-4
         }
 
         private DateTime entryTimeUtc;
@@ -40,7 +43,6 @@ namespace WhiskerTales.Sleep
 
         public bool IsSleeping => sleeping;
         public DateTime EntryTimeUtc => entryTimeUtc;
-
         public TimeSpan ElapsedSinceEntry => sleeping ? (DateTime.UtcNow - entryTimeUtc) : TimeSpan.Zero;
 
         private void Awake()
@@ -50,6 +52,11 @@ namespace WhiskerTales.Sleep
                 Destroy(gameObject);
                 return;
             }
+            EnsureInitialized();
+        }
+
+        public void EnsureInitialized()
+        {
             Instance = this;
         }
 
@@ -60,7 +67,6 @@ namespace WhiskerTales.Sleep
             entryTimeUtc = DateTime.UtcNow;
             sleeping = true;
             originalBrightness = Screen.brightness;
-            // Screen.brightness no-ops on unsupported platforms (Editor on Windows etc.) — safe to call.
             Screen.brightness = TARGET_BRIGHTNESS;
 
             PlayerPrefs.SetString(PREF_ENTRY_TIME, entryTimeUtc.ToString("o"));
@@ -69,43 +75,74 @@ namespace WhiskerTales.Sleep
             Debug.Log($"[SleepModeManager] Entered sleep mode at {entryTimeUtc:HH:mm:ss} UTC");
         }
 
-        /// <summary>
-        /// 수면 모드 종료. 보상 계산해서 즉시 적용 (코인/호감도/💝).
-        /// </summary>
+        /// <summary>활성 sleep 세션 종료. 보상 계산 + 즉시 적용.</summary>
         public SleepReward ExitSleepMode()
         {
             if (!sleeping) return default;
 
-            TimeSpan elapsed = DateTime.UtcNow - entryTimeUtc;
+            SleepReward reward = CalculateAndApplyRewards(entryTimeUtc, "sleep_mode_full_8h");
+
+            Screen.brightness = originalBrightness;
+            sleeping = false;
+            PlayerPrefs.DeleteKey(PREF_ENTRY_TIME);
+            PlayerPrefs.Save();
+
+            return reward;
+        }
+
+        /// <summary>
+        /// §C-3 앱 재시작 시 호출. PREF_ENTRY_TIME이 남아있으면 (이전 세션이 sleep 중 종료됐다는 뜻)
+        /// 경과 시간 기준 보상 계산 + 적용 + 키 정리. 보상 없으면 default 반환.
+        /// </summary>
+        public SleepReward ProcessPendingOfflineSleep()
+        {
+            if (sleeping) return default;
+            string stored = PlayerPrefs.GetString(PREF_ENTRY_TIME, "");
+            if (string.IsNullOrEmpty(stored)) return default;
+
+            if (!DateTime.TryParse(stored, null,
+                System.Globalization.DateTimeStyles.RoundtripKind, out DateTime entry))
+            {
+                PlayerPrefs.DeleteKey(PREF_ENTRY_TIME);
+                PlayerPrefs.Save();
+                return default;
+            }
+
+            SleepReward reward = CalculateAndApplyRewards(entry, "sleep_mode_offline_recovery");
+            PlayerPrefs.DeleteKey(PREF_ENTRY_TIME);
+            PlayerPrefs.Save();
+            Debug.Log($"[SleepModeManager] Offline sleep recovered — {reward.hours:F2}h, +{reward.anchovies} 멸치, +{reward.affinity} 호감도, +{reward.hearts} ❤, +{reward.nyangiHeart} 💝");
+            return reward;
+        }
+
+        /// <summary>
+        /// entryTime ~ DateTime.UtcNow 사이의 경과 시간으로 보상을 계산하고 즉시 적용.
+        /// 활성 세션 종료 / 오프라인 복구 양쪽에서 공유.
+        /// </summary>
+        private SleepReward CalculateAndApplyRewards(DateTime entryTime, string nyangiReason)
+        {
+            TimeSpan elapsed = DateTime.UtcNow - entryTime;
             float totalHours = (float)elapsed.TotalHours;
+            if (totalHours < 0) totalHours = 0;
             float cappedHours = Mathf.Min(totalHours, MAX_SLEEP_HOURS);
             float cappedMinutes = cappedHours * 60f;
 
             int anchovies = Mathf.FloorToInt(cappedHours * ANCHOVY_PER_HOUR);
             int affinity  = Mathf.FloorToInt(cappedMinutes / MINUTES_PER_AFFINITY);
             int nyangiHeart = totalHours >= MAX_SLEEP_HOURS ? NYANGI_HEART_FULL : 0;
+            int hearts = (cappedHours > 0f) ? HEARTS_PER_SESSION : 0;
 
-            // Apply rewards
             if (anchovies > 0) GameManager.Instance?.AddCoins(anchovies);
-
             if (affinity > 0)
             {
                 int catId = ResolveBondCatId();
                 CatManager.Instance?.IncreaseCatAffinity(catId, affinity);
             }
-
             if (nyangiHeart > 0)
             {
-                CurrencyManager.Instance?.TryAwardNyangiHeart(nyangiHeart, "sleep_mode_full_8h");
+                CurrencyManager.Instance?.TryAwardNyangiHeart(nyangiHeart, nyangiReason);
             }
-
-            // Restore brightness + clear state
-            Screen.brightness = originalBrightness;
-            sleeping = false;
-            PlayerPrefs.DeleteKey(PREF_ENTRY_TIME);
-            PlayerPrefs.Save();
-
-            Debug.Log($"[SleepModeManager] Exited sleep mode. Elapsed: {totalHours:F2}h (capped {cappedHours:F2}h), +{anchovies} 멸치, +{affinity} 호감도, +{nyangiHeart} 💝");
+            if (hearts > 0) GameManager.Instance?.AddLives(hearts);
 
             return new SleepReward
             {
@@ -113,13 +150,10 @@ namespace WhiskerTales.Sleep
                 anchovies = anchovies,
                 affinity = affinity,
                 nyangiHeart = nyangiHeart,
+                hearts = hearts,
             };
         }
 
-        /// <summary>
-        /// 호감도를 어떤 고양이에게 줄지 결정. 일단 첫 번째 언락 고양이.
-        /// 후속 작업: CatBondScreen의 마지막 선택을 PlayerPrefs로 저장 후 사용.
-        /// </summary>
         private int ResolveBondCatId()
         {
             UserProgress up = GameManager.Instance?.UserProgress;
@@ -131,8 +165,6 @@ namespace WhiskerTales.Sleep
         private void OnApplicationPause(bool pause)
         {
             if (!sleeping) return;
-            // Save entry time on pause so cold-start recovery is possible (v1.1 처리).
-            // Resume: 경과 시간은 DateTime.UtcNow가 알아서 반영.
             if (pause)
             {
                 PlayerPrefs.SetString(PREF_ENTRY_TIME, entryTimeUtc.ToString("o"));

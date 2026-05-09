@@ -9,6 +9,7 @@ using WhiskerTales.Audio;
 using WhiskerTales.Cat;
 using WhiskerTales.Core;
 using WhiskerTales.Currency;
+using WhiskerTales.Heart;
 using WhiskerTales.Puzzle;
 using WhiskerTales.Referral;
 using WhiskerTales.Settings;
@@ -68,6 +69,7 @@ namespace WhiskerTales.Bootstrap
         private TutorialOverlay tutorialOverlay;
         private RectTransform shareCardPanel;
         private ReferralShareCardScreen shareCardScreen;
+        private IdleRewardModal idleRewardModal;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
@@ -75,6 +77,7 @@ namespace WhiskerTales.Bootstrap
         public SettingsScreen Settings => settingsScreen;
         public TutorialOverlay Tutorial => tutorialOverlay;
         public ReferralShareCardScreen ShareCard => shareCardScreen;
+        public IdleRewardModal IdleRewardModal => idleRewardModal;
 
         public DetoxMessageModal DetoxModal => detoxModal;
         public SleepModeScreen SleepScreen => sleepModeScreen;
@@ -105,6 +108,7 @@ namespace WhiskerTales.Bootstrap
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
             sleepModeScreen = BuildSleepModeScreen(rootCanvas.transform);
             tutorialOverlay = BuildTutorialOverlay(rootCanvas.transform);
+            idleRewardModal = BuildIdleRewardModal(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
@@ -121,6 +125,9 @@ namespace WhiskerTales.Bootstrap
 
             if (GameManager.Instance != null)
                 GameManager.Instance.OnNavigationRequested += ShowPanel;
+
+            // §C-3 idle 보상 회수 — 이전 세션에서 sleep 중 종료 됐으면 경과 시간 보상 적용 + 모달 표시
+            ProcessIdleRewardOnStartup();
 
             bool firstRun = PlayerPrefs.GetInt(OpeningScenario.PREF_SEEN, 0) == 0;
             if (firstRun)
@@ -196,6 +203,10 @@ namespace WhiskerTales.Bootstrap
             if (ReferralManager.Instance == null)
             {
                 managers.AddComponent<ReferralManager>();
+            }
+            if (HeartRechargeManager.Instance == null)
+            {
+                managers.AddComponent<HeartRechargeManager>();
             }
 
             if (I18nManager.Instance != null)
@@ -1382,6 +1393,61 @@ namespace WhiskerTales.Bootstrap
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
             }
+        }
+
+        // ===== Phase C-3: Idle Reward Modal =====
+
+        private void ProcessIdleRewardOnStartup()
+        {
+            if (SleepModeManager.Instance == null) return;
+            SleepModeManager.SleepReward reward = SleepModeManager.Instance.ProcessPendingOfflineSleep();
+            if (reward.hours > 0f && idleRewardModal != null)
+            {
+                idleRewardModal.Show(reward);
+            }
+        }
+
+        private IdleRewardModal BuildIdleRewardModal(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "IdleRewardOverlay");
+            panel.gameObject.SetActive(false);
+
+            Image bg = panel.GetComponent<Image>();
+            bg.color = new Color(0, 0, 0, 0.65f);
+            bg.raycastTarget = true;
+
+            // Center card
+            RectTransform card = MakeRT(panel, "Card",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(880, 720));
+            Image cardBg = card.gameObject.AddComponent<Image>();
+            cardBg.sprite = TileView.GetWhiteSprite();
+            cardBg.color = new Color(0.96f, 0.945f, 0.91f);
+            cardBg.raycastTarget = true;
+
+            TextMeshProUGUI titleText = CreateText(card, "Title",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -80), new Vector2(820, 100),
+                TextAlignmentOptions.Center, 44, "");
+            titleText.color = new Color(0.30f, 0.20f, 0.12f);
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.raycastTarget = false;
+
+            TextMeshProUGUI rewardText = CreateText(card, "Reward",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(800, 360),
+                TextAlignmentOptions.Center, 38, "");
+            rewardText.color = new Color(0.20f, 0.18f, 0.15f);
+            rewardText.lineSpacing = 8;
+            rewardText.raycastTarget = false;
+
+            Button confirmBtn = CreateButton(card, "ConfirmButton",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 90), new Vector2(560, 130),
+                "확인", new Color(0.95f, 0.55f, 0.30f, 1f));
+
+            IdleRewardModal modal = panel.gameObject.AddComponent<IdleRewardModal>();
+            InjectField(modal, "root", panel.gameObject);
+            InjectField(modal, "titleText", titleText);
+            InjectField(modal, "rewardText", rewardText);
+            InjectField(modal, "confirmButton", confirmBtn);
+            return modal;
         }
 
         // ===== Phase C: Tutorial Overlay =====

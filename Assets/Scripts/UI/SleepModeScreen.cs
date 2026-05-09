@@ -87,6 +87,7 @@ namespace WhiskerTales.UI
                               $"⏱ {reward.hours:F1} 시간 휴식\n" +
                               $"🐟 멸치 +{reward.anchovies}\n" +
                               $"♥ 호감도 +{reward.affinity}";
+                if (reward.hearts > 0) text += $"\n❤ 하트 +{reward.hearts}";
                 if (reward.nyangiHeart > 0) text += $"\n💝 냥이 마음 +{reward.nyangiHeart}";
                 rewardText.text = text;
             }
