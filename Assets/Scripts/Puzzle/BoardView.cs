@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,8 +7,9 @@ using TMPro;
 namespace WhiskerTales.Puzzle
 {
     /// <summary>
-    /// Board의 8x8 TileData를 화면에 표시하고 입력을 처리하는 컨트롤러
-    /// 첫 클릭 → 선택, 두 번째 인접 클릭 → Board.TrySwapTiles 호출
+    /// Board의 8x8 TileData를 화면에 표시하고 입력을 처리하는 컨트롤러.
+    /// 입력 모델: 누름(OnTilePressed) → 드래그 → 손 뗌(OnTileReleased) → 카디널 방향으로 스왑.
+    /// 드래그 거리가 타일 크기 30% 미만이면 오터치 방지로 무시. 보드 밖/매치 불가면 bounce 애니메이션.
     /// </summary>
     public class BoardView : MonoBehaviour
     {
@@ -17,6 +19,13 @@ namespace WhiskerTales.Puzzle
         public TextMeshProUGUI goalText;
         public TextMeshProUGUI movesText;
         public TextMeshProUGUI statusText;
+
+        // 드래그 거리 임계값 (타일 크기 대비 비율). 이 값 미만이면 오터치로 간주.
+        public const float DRAG_THRESHOLD_RATIO = 0.3f;
+
+        // Bounce 애니메이션 길이/거리.
+        public const float BOUNCE_DURATION = 0.18f;
+        public const float BOUNCE_DISTANCE = 18f;
 
         private const int GRID_SIZE = 8;
         private TileView[,] views = new TileView[GRID_SIZE, GRID_SIZE];
@@ -74,51 +83,89 @@ namespace WhiskerTales.Puzzle
             }
         }
 
-        public void OnTileClicked(TileView clicked)
+        // ===== 입력 콜백 (TileView가 호출) =====
+
+        public void OnTilePressed(TileView pressed)
         {
-            if (board == null || clicked == null) return;
+            if (board == null || pressed == null) return;
             if (board.IsLevelComplete()) return;
             if (levelGoal != null && levelGoal.IsMovesExceeded()) return;
 
-            if (selectedView == null)
+            if (selectedView != null && selectedView != pressed)
             {
-                selectedView = clicked;
-                clicked.SetSelected(true);
+                selectedView.SetSelected(false);
+            }
+            selectedView = pressed;
+            pressed.SetSelected(true);
+            UpdateStatus("");
+        }
+
+        /// <summary>
+        /// 드래그 종료 시 호출. dragDelta는 화면 픽셀 단위(시작점 기준 변위).
+        /// 임계값 통과 시 카디널 방향 인접 타일과 스왑 시도.
+        /// </summary>
+        public void OnTileReleased(TileView released, Vector2 dragDelta)
+        {
+            if (board == null || released == null) return;
+            // selectedView 정합성 — Pressed→Released 정상 흐름이면 같지만, 재진입 가드만.
+            if (selectedView != released)
+            {
+                if (selectedView != null) selectedView.SetSelected(false);
+                selectedView = null;
+            }
+
+            // 임계값: 타일 크기 × 비율
+            RectTransform rt = released.transform as RectTransform;
+            float tileSize = (rt != null) ? Mathf.Min(rt.rect.width, rt.rect.height) : 100f;
+            if (tileSize <= 0f) tileSize = 100f;
+            float threshold = tileSize * DRAG_THRESHOLD_RATIO;
+
+            if (dragDelta.magnitude < threshold)
+            {
+                // 오터치 방지 — 선택만 해제하고 끝
+                released.SetSelected(false);
+                selectedView = null;
+                return;
+            }
+
+            // 카디널 방향 결정 — 더 큰 축이 우세
+            int dx = 0, dy = 0;
+            if (Mathf.Abs(dragDelta.x) > Mathf.Abs(dragDelta.y))
+                dx = (dragDelta.x > 0f) ? 1 : -1;
+            else
+                dy = (dragDelta.y > 0f) ? -1 : 1;
+            // 주의: UI Y축은 위로 +지만 grid Y축은 아래로 +. 보드의 (x, y) 좌표계에 맞추기 위해
+            // 화면 위쪽 드래그(dragDelta.y > 0)가 grid Y -1(=위쪽 행)이 되도록 부호 반전.
+
+            int targetX = released.x + dx;
+            int targetY = released.y + dy;
+
+            // 보드 밖이면 bounce
+            if (targetX < 0 || targetX >= GRID_SIZE || targetY < 0 || targetY >= GRID_SIZE)
+            {
+                if (Application.isPlaying) StartCoroutine(BounceAnimation(released, dx, -dy));
+                released.SetSelected(false);
+                selectedView = null;
                 UpdateStatus("");
                 return;
             }
 
-            if (selectedView == clicked)
+            // 스왑 시도
+            int sx = released.x, sy = released.y;
+            bool ok = board.TrySwapTiles(sx, sy, targetX, targetY);
+            released.SetSelected(false);
+            selectedView = null;
+            RefreshAll();
+
+            if (!ok)
             {
-                clicked.SetSelected(false);
-                selectedView = null;
-                return;
-            }
-
-            int dx = Mathf.Abs(selectedView.x - clicked.x);
-            int dy = Mathf.Abs(selectedView.y - clicked.y);
-            bool adjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
-
-            if (adjacent)
-            {
-                int sx = selectedView.x, sy = selectedView.y;
-                bool ok = board.TrySwapTiles(sx, sy, clicked.x, clicked.y);
-                // selectedView could have been destroyed by RefreshAll / re-spawn pipeline below;
-                // null-check before SetSelected to guard against rare race after TrySwapTiles.
-                if (selectedView != null) selectedView.SetSelected(false);
-                selectedView = null;
-                RefreshAll();
-
-                if (!ok)
-                    UpdateStatus("매치 없음 — 스왑 취소");
-                else
-                    UpdateStatus("");
+                // RefreshAll 후에도 released는 같은 위치(스왑 실패 → 보드 변동 없음). bounce 가능.
+                if (Application.isPlaying) StartCoroutine(BounceAnimation(released, dx, -dy));
+                UpdateStatus("매치 없음 — 스왑 취소");
             }
             else
             {
-                if (selectedView != null) selectedView.SetSelected(false);
-                selectedView = clicked;
-                if (clicked != null) clicked.SetSelected(true);
+                UpdateStatus("");
             }
         }
 
@@ -170,6 +217,31 @@ namespace WhiskerTales.Puzzle
         private void UpdateStatus(string msg)
         {
             if (statusText != null) statusText.text = msg;
+        }
+
+        /// <summary>
+        /// 스왑 불가 시 살짝 튕기는 애니메이션 — UI 좌표계(위로 +)에 맞춰 dx/dyUI를 받음.
+        /// </summary>
+        private IEnumerator BounceAnimation(TileView tile, int dx, int dyUI)
+        {
+            if (tile == null) yield break;
+            RectTransform rt = tile.transform as RectTransform;
+            if (rt == null) yield break;
+
+            Vector2 origin = rt.anchoredPosition;
+            Vector2 bounceOffset = new Vector2(dx * BOUNCE_DISTANCE, dyUI * BOUNCE_DISTANCE);
+
+            float t = 0f;
+            while (t < BOUNCE_DURATION)
+            {
+                t += Time.deltaTime;
+                float p = Mathf.Clamp01(t / BOUNCE_DURATION);
+                // 사인 곡선 한 번 — 0 → 1 → 0
+                float curve = Mathf.Sin(p * Mathf.PI);
+                if (rt != null) rt.anchoredPosition = origin + bounceOffset * curve;
+                yield return null;
+            }
+            if (rt != null) rt.anchoredPosition = origin;
         }
     }
 }

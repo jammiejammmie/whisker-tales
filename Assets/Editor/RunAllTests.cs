@@ -27,6 +27,7 @@ namespace WhiskerTales.EditorTests
                 (HeartRechargeTests.TestAll,             "Heart Recharge"),
                 (PolishTests.TestDetoxPolish,            "Detox Text Polish"),
                 (PolishTests.TestIcons,                  "Icons"),
+                (DragSwapTests.TestDragSwap,             "Drag Swap"),
             };
 
             // 각 테스트가 끝낼 때 emit하는 "[TEST] <name>: PASS|FAIL ..." 라인만 캡처.
