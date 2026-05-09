@@ -270,7 +270,101 @@ Canvas
 - Size over Lifetime: 0.5 → 0
 - Looping: 끔 (PlayHeartFx에서 .Play() 호출)
 
-## 7. 알려진 미구현 / 후속 작업
+## 7. Phase A-3: 매치-3 게임플레이 UI
+
+### 7.1 GameObject 계층
+
+```
+Canvas
+└── GameplayPanel              (Cat Room/Title이 아니라 별도 패널, BottomNav 외부)
+    ├── BackgroundImage         (상단 35% — 한옥 배경, GameplayUI 갱신)
+    ├── DetoxCopyText           (배경 위 오버레이 — DailyCopy 자동 적용)
+    ├── TopBar
+    │   ├── PauseButton
+    │   └── MenuButton
+    ├── HUD_Left
+    │   ├── LevelText           ("Level 1")
+    │   ├── ScoreText           ("Score: 0")
+    │   ├── MovesText           ("Moves: 25")
+    │   ├── GoalText            ("Remove 50 blocks\n0/50")
+    │   └── ProgressSlider      (Slider, 0~1)
+    ├── BoardArea               (8×8 그리드 영역, BoardView가 채움)
+    │   ├── (TileSpriteBinder는 매니저나 BoardArea에 컴포넌트로 부착)
+    │   └── (Board / LevelGoal / BoardView GameObject들 — GameBootstrap 또는 수동 배치)
+    ├── BoosterPanel            (우측 부스터 3종)
+    │   ├── HammerButton + HammerCountText (TMP_Text "x3")
+    │   ├── ColorBombButton + ColorBombCountText
+    │   └── ShuffleButton + ShuffleCountText
+    ├── FeedbackText             (중앙 — "나이스!" 등)
+    ├── ComboText                (피드백 위 — "COMBO x5")
+    ├── LevelClearPanel          (비활성, 클리어 시 활성화)
+    │   ├── Root
+    │   ├── TitleText            ("Level Complete!")
+    │   ├── Stars (3개 Image)
+    │   ├── CoinRewardText       ("🐾 +100")
+    │   └── ContinueButton
+    └── LevelFailPanel           (비활성, 실패 시 stub)
+```
+
+### 7.2 컴포넌트 Inspector 매핑
+
+**TileSpriteBinder** (어디든 부착)
+
+| 필드 | 연결 대상 |
+|---|---|
+| tileFish | Sprites/Tiles/tile_fish.png |
+| tileMilk | Sprites/Tiles/tile_milk.png |
+| tileYarn | Sprites/Tiles/tile_yarn.png |
+| tileCatnip | Sprites/Tiles/tile_catnip.png |
+| tilePawprint | Sprites/Tiles/tile_pawprint.png |
+| tileFishbone | Sprites/Tiles/tile_fishbone.png |
+
+**GameplayUI** (GameplayPanel에 부착)
+
+| 필드 | 연결 대상 |
+|---|---|
+| levelText / scoreText / movesText / goalText / progressSlider | HUD_Left/* |
+| backgroundImage | BackgroundImage |
+| detoxCopyText | DetoxCopyText |
+| pauseButton / menuButton | TopBar/* |
+| feedbackText | FeedbackText |
+| comboText | ComboText |
+| feedbackHoldSeconds | 1.2 (기본) |
+| defaultCoinReward | 100 (Constants.COIN_PER_LEVEL_CLEAR) |
+| levelClearPanel | LevelClearPanel의 LevelClearPanel 컴포넌트 |
+| levelFailPanel | LevelFailPanel GameObject |
+
+**BoosterPanel** (BoosterPanel GameObject에 부착)
+
+| 필드 | 연결 |
+|---|---|
+| entries[0] | type=Hammer, button=HammerButton, countText=HammerCountText, initialCount=3 |
+| entries[1] | type=ColorBomb, ..., initialCount=2 |
+| entries[2] | type=Shuffle, ..., initialCount=1 |
+
+**LevelClearPanel** (LevelClearPanel GameObject에 부착)
+
+| 필드 | 연결 |
+|---|---|
+| root | LevelClearPanel/Root |
+| starImages[3] | Stars/Star1, Star2, Star3 |
+| starFilled / starEmpty | 별 sprite (Inspector 또는 UI 기본 별 아이콘) |
+| coinRewardText | CoinRewardText |
+| titleText | TitleText |
+| continueButton | ContinueButton |
+| starRevealDelay / coinRevealDelay | 0.4 / 1.5 |
+
+### 7.3 Board / LevelGoal / BoardView 배치
+
+기존 `GameBootstrap`은 절차적으로 모든 UI를 만들기 때문에 Phase A-3 패널 구조와 중복됩니다. 두 가지 옵션:
+
+**옵션 A (권장):** GameBootstrap 제거 → BoardArea 안에 빈 GameObject 3개 (`Board`, `LevelGoal`, `BoardView`)를 만들고 컴포넌트 부착. BoardView Inspector에서 `gridContainer`를 BoardArea로, `goalText/movesText/statusText`는 GameplayUI HUD로 연결. Awake/Start에서 Level 데이터를 코드로 주입하는 작은 부트스트랩 컴포넌트 추가 필요.
+
+**옵션 B:** 기존 GameBootstrap을 그대로 두고, GameplayPanel을 GameBootstrap이 만든 Canvas의 자식으로 두지 않음 → Phase A-3 패널과 별개의 임시 화면으로 운영. 통합은 추후.
+
+옵션 A가 맞지만 Phase A-3 Phase 범위를 넘어가므로, 현재는 GameBootstrap 절차적 화면이 Phase A-3 UI 위에 덮어쓰여 동작합니다 (시각적 충돌 가능). 노부장 결재 후 옵션 A로 정리 권장.
+
+
 
 | 항목 | Phase |
 |---|---|
@@ -281,7 +375,6 @@ Canvas
 | PlayArea 매치-3 그리드 | Phase A-3 |
 | CafeUI.cs의 Resources.Load(portraitPath) → Inspector 할당 | Phase A-7 |
 | 카메라 버튼 → 포토 스튜디오 | Phase B §4-8 |
-| 호감도 누진 테이블 (인계 패킷 100→250→500→1000 vs 현재 100×5) | 노부장 결재 사항 |
 
 ---
 

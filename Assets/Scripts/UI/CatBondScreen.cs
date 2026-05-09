@@ -175,13 +175,29 @@ namespace WhiskerTales.UI
             Core.Cat cat = CatManager.Instance.GetCat(currentCatId);
             if (cat == null) return;
 
-            float ratio = (float)cat.affinityPoints / Constants.AFFINITY_POINTS_PER_LEVEL;
-            if (affinityProgressBar != null) affinityProgressBar.fillAmount = Mathf.Clamp01(ratio);
-            if (affinityProgressText != null) affinityProgressText.text = $"{cat.affinityPoints} / {Constants.AFFINITY_POINTS_PER_LEVEL}";
+            int currentIdx = cat.affinityLevel;
+            int maxIdx = Constants.AFFINITY_LEVEL_MAX - 1;
+
+            int currentThreshold = Constants.AFFINITY_THRESHOLDS[currentIdx];
+            bool isMaxLevel = currentIdx >= maxIdx;
+            int nextThreshold = isMaxLevel
+                ? Constants.AFFINITY_THRESHOLDS[maxIdx]
+                : Constants.AFFINITY_THRESHOLDS[currentIdx + 1];
+
+            int span = Mathf.Max(1, nextThreshold - currentThreshold);
+            int into = cat.affinityPoints - currentThreshold;
+            float ratio = isMaxLevel ? 1f : Mathf.Clamp01((float)into / span);
+
+            if (affinityProgressBar != null) affinityProgressBar.fillAmount = ratio;
+            if (affinityProgressText != null)
+            {
+                affinityProgressText.text = isMaxLevel
+                    ? $"MAX ({cat.affinityPoints})"
+                    : $"{cat.affinityPoints} / {nextThreshold}";
+            }
             if (affinityNextLevelText != null)
             {
-                int nextLv = Mathf.Min(cat.affinityLevel + 2, Constants.AFFINITY_LEVEL_MAX);
-                affinityNextLevelText.text = $"→ Lv.{nextLv}";
+                affinityNextLevelText.text = isMaxLevel ? "MAX" : $"→ Lv.{currentIdx + 2}";
             }
         }
 

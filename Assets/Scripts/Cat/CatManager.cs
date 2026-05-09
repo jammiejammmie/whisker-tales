@@ -157,22 +157,25 @@ namespace WhiskerTales.Cat
             }
 
             Core.Cat cat = cats[catId];
-            cat.AddAffinityPoints(points);
+            int levelBefore = cat.affinityLevel;
+            int levelUps = cat.AddAffinityPoints(points);
 
-            // 호감도 레벨 업 시 보상
-            if (cat.affinityLevel > 0 && cat.affinityPoints < Constants.AFFINITY_POINTS_PER_LEVEL / 2)
+            // 누진 테이블 보상: 도달한 새 레벨 인덱스마다 코인/보석 지급
+            for (int i = 0; i < levelUps; i++)
             {
-                int coinReward = Constants.COIN_PER_AFFINITY_LEVEL;
-                int gemReward = Constants.GEM_PER_AFFINITY_LEVEL;
+                int newLevelIdx = levelBefore + 1 + i;
+                if (newLevelIdx <= 0 || newLevelIdx >= Constants.AFFINITY_LEVELUP_COINS.Length) continue;
 
-                gameManager.AddCoins(coinReward);
-                gameManager.AddGems(gemReward);
+                int coinReward = Constants.AFFINITY_LEVELUP_COINS[newLevelIdx];
+                int gemReward = Constants.AFFINITY_LEVELUP_GEMS[newLevelIdx];
+                if (coinReward > 0) gameManager.AddCoins(coinReward);
+                if (gemReward > 0) gameManager.AddGems(gemReward);
 
-                Debug.Log($"[CatManager] Cat {catId} affinity level up! Rewards: {coinReward} coins, {gemReward} gems");
+                Debug.Log($"[CatManager] Cat {catId} reached Lv.{newLevelIdx + 1} — rewards {coinReward} coins, {gemReward} gems");
             }
 
             OnCatAffinityChanged?.Invoke(catId, cat.affinityPoints);
-            Debug.Log($"[CatManager] Cat {catId} affinity increased by {points} (Total: {cat.affinityPoints})");
+            Debug.Log($"[CatManager] Cat {catId} affinity +{points} (Total: {cat.affinityPoints}, Lv.{cat.affinityLevel + 1})");
         }
 
         /// <summary>

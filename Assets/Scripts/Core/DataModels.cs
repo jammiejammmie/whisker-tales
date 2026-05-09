@@ -75,26 +75,31 @@ namespace WhiskerTales.Core
         }
 
         /// <summary>
-        /// 호감도 포인트 추가
+        /// 호감도 포인트 추가 (인계 패킷 §4-2 누진 테이블).
+        /// affinityPoints는 누적값. AFFINITY_THRESHOLDS[level+1] 도달 시 레벨업.
+        /// Lv5(=인덱스 4)에서는 더 이상 레벨업하지 않음.
         /// </summary>
-        public void AddAffinityPoints(int points)
+        /// <returns>이번 호출로 발생한 레벨업 횟수.</returns>
+        public int AddAffinityPoints(int points)
         {
             affinityPoints += points;
-            
-            // 호감도 레벨 업
-            while (affinityPoints >= Constants.AFFINITY_POINTS_PER_LEVEL && 
-                   affinityLevel < Constants.AFFINITY_LEVEL_MAX)
+
+            int maxIdx = Constants.AFFINITY_LEVEL_MAX - 1; // 0~4
+            int levelUps = 0;
+            while (affinityLevel < maxIdx &&
+                   affinityPoints >= Constants.AFFINITY_THRESHOLDS[affinityLevel + 1])
             {
-                affinityPoints -= Constants.AFFINITY_POINTS_PER_LEVEL;
                 affinityLevel++;
+                levelUps++;
             }
 
-            // 최대값 제한
-            if (affinityLevel >= Constants.AFFINITY_LEVEL_MAX)
+            if (affinityLevel >= maxIdx)
             {
-                affinityLevel = Constants.AFFINITY_LEVEL_MAX;
-                affinityPoints = Constants.AFFINITY_POINTS_PER_LEVEL - 1;
+                affinityLevel = maxIdx;
+                int cap = Constants.AFFINITY_THRESHOLDS[maxIdx];
+                if (affinityPoints < cap) affinityPoints = cap;
             }
+            return levelUps;
         }
 
         /// <summary>

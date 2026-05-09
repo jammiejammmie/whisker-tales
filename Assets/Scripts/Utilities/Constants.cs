@@ -31,11 +31,26 @@ namespace WhiskerTales.Utilities
         public const int GEM_PER_AFFINITY_LEVEL = 5;        // 호감도 레벨당 보석
 
         // ===== 고양이 호감도 =====
-        public const int AFFINITY_LEVEL_MAX = 5;            // 최대 호감도 레벨
-        public const int AFFINITY_POINTS_PER_LEVEL = 100;   // 레벨당 호감도 포인트
+        public const int AFFINITY_LEVEL_MAX = 5;            // 최대 호감도 레벨 (Lv1~Lv5)
+        public const int AFFINITY_POINTS_PER_LEVEL = 100;   // [DEPRECATED] 누진 테이블로 대체. CatBondScreen 호환성 위해 유지.
         public const int AFFINITY_PER_PET = 5;              // 쓰다듬기당 호감도
         public const int AFFINITY_PER_SNACK = 15;           // 간식 주기당 호감도
         public const int AFFINITY_PER_PLAY = 10;            // 놀아주기당 호감도
+
+        /// <summary>
+        /// 인계 패킷 §4-2 누진 테이블. 인덱스 = affinityLevel (0~4 = Lv1~Lv5).
+        /// 값 = 그 레벨에 도달하는 데 필요한 누적 포인트.
+        /// Lv1=0, Lv2=100, Lv3=250, Lv4=500, Lv5=1000.
+        /// </summary>
+        public static readonly int[] AFFINITY_THRESHOLDS = { 0, 100, 250, 500, 1000 };
+
+        // 레벨업 보상 (인계 패킷 §4-2)
+        // Lv2: 코인 100
+        // Lv3: 보석 10 (+가구 보상은 후속 작업)
+        // Lv4: 보석 20 (+레어 보상)
+        // Lv5: 보석 50 (+스토리)
+        public static readonly int[] AFFINITY_LEVELUP_COINS = { 0, 100, 0, 0, 0 };
+        public static readonly int[] AFFINITY_LEVELUP_GEMS = { 0, 0, 10, 20, 50 };
 
         // ===== 카페 복원 =====
         public const int CAFE_AREAS = 3;                    // 카페 구역 수
