@@ -124,47 +124,83 @@ namespace WhiskerTales.Bootstrap
 
         /// <summary>
         /// LiberationSans SDF (TMP Essentials 기본 폰트)에는 한글 글리프가 없어서
-        /// 한국어 텍스트가 □로 렌더링됨. Windows의 Malgun Gothic 등 OS 폰트로
-        /// 동적 TMP_FontAsset를 만들어 fallback 체인에 등록.
+        /// 한국어 텍스트가 □로 렌더링됨. TMP 3.0.6은 OS 동적 폰트(Font.CreateDynamicFromOSFont)
+        /// 기반으로는 TMP_FontAsset을 못 만들어서, Windows/Fonts의 malgun.ttf를 Assets/Fonts/로
+        /// 복사해 AssetDatabase로 임포트한 뒤 그 Font 에셋으로 CreateFontAsset(Font) 호출.
+        /// 에디터 전용. 런타임 빌드는 별도 처리 필요 (TODO: Addressables 또는 StreamingAssets).
         /// </summary>
         private static void InstallKoreanFontFallback()
         {
+#if UNITY_EDITOR
             try
             {
                 if (TMPro.TMP_Settings.fallbackFontAssets == null) return;
+                if (HasKoreanFallback()) return;
 
-                Font osFont = null;
-                string[] candidates = { "Malgun Gothic", "맑은 고딕", "NanumGothic", "Noto Sans KR", "Gulim", "Dotum", "Batang" };
-                foreach (string name in candidates)
+                string projectFontPath = "Assets/Fonts/MalgunGothic.ttf";
+
+                if (!System.IO.File.Exists(projectFontPath))
                 {
-                    osFont = Font.CreateDynamicFontFromOSFont(name, 32);
-                    if (osFont != null) break;
+                    string[] sysCandidates =
+                    {
+                        @"C:\Windows\Fonts\malgun.ttf",
+                        @"C:\Windows\Fonts\malgunbd.ttf",
+                        @"C:\Windows\Fonts\NanumGothic.ttf",
+                        @"C:\Windows\Fonts\gulim.ttc",
+                    };
+                    string sysPath = null;
+                    foreach (string p in sysCandidates) { if (System.IO.File.Exists(p)) { sysPath = p; break; } }
+                    if (sysPath == null)
+                    {
+                        Debug.LogWarning("[AppBootstrap] No Korean OS font available — Korean text may render as □.");
+                        return;
+                    }
+
+                    System.IO.Directory.CreateDirectory("Assets/Fonts");
+                    System.IO.File.Copy(sysPath, projectFontPath, false);
+                    UnityEditor.AssetDatabase.ImportAsset(projectFontPath, UnityEditor.ImportAssetOptions.ForceUpdate);
+                    Debug.Log($"[AppBootstrap] Imported Korean font: {sysPath} -> {projectFontPath}");
                 }
-                if (osFont == null)
+
+                Font koFont = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>(projectFontPath);
+                if (koFont == null)
                 {
-                    Debug.LogWarning("[AppBootstrap] No Korean OS font found — Korean text will render as □.");
+                    Debug.LogWarning($"[AppBootstrap] LoadAssetAtPath<Font> returned null for {projectFontPath}");
                     return;
                 }
 
-                TMPro.TMP_FontAsset koAsset = TMPro.TMP_FontAsset.CreateFontAsset(osFont);
+                TMPro.TMP_FontAsset koAsset = TMPro.TMP_FontAsset.CreateFontAsset(koFont);
                 if (koAsset == null)
                 {
-                    Debug.LogWarning($"[AppBootstrap] CreateFontAsset returned null for {osFont.name}.");
+                    Debug.LogWarning($"[AppBootstrap] CreateFontAsset still returned null for {koFont.name}");
                     return;
                 }
 
-                koAsset.name = $"{osFont.name} Dynamic Korean Fallback";
+                koAsset.name = "Korean Fallback (MalgunGothic)";
                 koAsset.atlasPopulationMode = TMPro.AtlasPopulationMode.Dynamic;
+                TMPro.TMP_Settings.fallbackFontAssets.Add(koAsset);
 
-                if (!TMPro.TMP_Settings.fallbackFontAssets.Contains(koAsset))
-                    TMPro.TMP_Settings.fallbackFontAssets.Add(koAsset);
-
-                Debug.Log($"[AppBootstrap] Korean fallback registered via OS font '{osFont.name}'.");
+                Debug.Log($"[AppBootstrap] Korean fallback registered: {koAsset.name}");
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[AppBootstrap] Failed to install Korean font fallback: {e.Message}");
+                Debug.LogWarning($"[AppBootstrap] Korean font setup failed: {e.GetType().Name}: {e.Message}");
             }
+#else
+            Debug.LogWarning("[AppBootstrap] Korean fallback not available in runtime build (TODO: bundle font via StreamingAssets).");
+#endif
+        }
+
+        private static bool HasKoreanFallback()
+        {
+            var list = TMPro.TMP_Settings.fallbackFontAssets;
+            if (list == null) return false;
+            foreach (var f in list)
+            {
+                if (f != null && f.name != null && f.name.IndexOf("Korean", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            return false;
         }
 
         // ===== canvas =====

@@ -37,3 +37,7 @@ Thumbs.db
 # Claude Code local settings
 .claude/settings.local.json
 
+# Local-only Windows system font copy (license: Microsoft, do not redistribute)
+Assets/Fonts/MalgunGothic.ttf
+Assets/Fonts/MalgunGothic.ttf.meta
+
