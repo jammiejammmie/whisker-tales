@@ -83,7 +83,7 @@ namespace WhiskerTales.EditorTests
             }
             finally
             {
-                Object.DestroyImmediate(mgrGo);
+                UnityEngine.Object.DestroyImmediate(mgrGo);
                 if (string.IsNullOrEmpty(bRecharge))
                     PlayerPrefs.DeleteKey(HeartRechargeManager.PREF_LAST_RECHARGE);
                 else

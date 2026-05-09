@@ -96,7 +96,7 @@ namespace WhiskerTales.EditorTests
             }
             finally
             {
-                Object.DestroyImmediate(mgrGo);
+                UnityEngine.Object.DestroyImmediate(mgrGo);
                 if (string.IsNullOrEmpty(backup))
                     PlayerPrefs.DeleteKey(SleepModeManager.PREF_ENTRY_TIME);
                 else
