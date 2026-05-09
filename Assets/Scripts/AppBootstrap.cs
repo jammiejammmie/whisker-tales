@@ -52,6 +52,8 @@ namespace WhiskerTales.Bootstrap
         private LoadingScreen loadingScreen;
         private DetoxMessageModal detoxModal;
         private SleepModeScreen sleepModeScreen;
+        private RectTransform meditationPanel;
+        private MeditationGardenController meditationController;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
@@ -75,6 +77,7 @@ namespace WhiskerTales.Bootstrap
             catRoomPanel  = BuildCatRoomPanel(rootCanvas.transform);
             cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
             arcadePanel     = BuildArcadePanel(rootCanvas.transform);
+            meditationPanel = BuildMeditationGardenPanel(rootCanvas.transform);
             openingPanel    = BuildOpeningPanel(rootCanvas.transform);
             loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
@@ -82,11 +85,12 @@ namespace WhiskerTales.Bootstrap
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
-                { NavigationTarget.Title,    titlePanel },
-                { NavigationTarget.Gameplay, gameplayPanel },
-                { NavigationTarget.CatRoom,  catRoomPanel },
-                { NavigationTarget.Cafe,     cafePanel },
-                { NavigationTarget.Arcade,   arcadePanel },
+                { NavigationTarget.Title,            titlePanel },
+                { NavigationTarget.Gameplay,         gameplayPanel },
+                { NavigationTarget.CatRoom,          catRoomPanel },
+                { NavigationTarget.Cafe,             cafePanel },
+                { NavigationTarget.Arcade,           arcadePanel },
+                { NavigationTarget.MeditationGarden, meditationPanel },
             };
 
             if (GameManager.Instance != null)
@@ -332,6 +336,16 @@ namespace WhiskerTales.Bootstrap
             {
                 AudioManager.instance?.PlayButtonClick();
                 GameManager.Instance?.RequestNavigation(NavigationTarget.Arcade);
+            });
+
+            Button meditation = CreateButton(panel, "MeditationButton",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, -610), new Vector2(560, 140),
+                "명상 정원", new Color(0.483f, 0.722f, 0.553f, 1f));
+            meditation.onClick.AddListener(() =>
+            {
+                AudioManager.instance?.PlayButtonClick();
+                GameManager.Instance?.RequestNavigation(NavigationTarget.MeditationGarden);
             });
 
             return panel;
@@ -1304,6 +1318,82 @@ namespace WhiskerTales.Bootstrap
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
             }
+        }
+
+        // ===== Phase B-3: Meditation Garden (§3-2) =====
+
+        private RectTransform BuildMeditationGardenPanel(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "MeditationGardenPanel");
+            panel.gameObject.SetActive(false);
+
+            Image bg = panel.GetComponent<Image>();
+            Sprite zone3 = spriteLib.GetBackground(3, 5);
+            if (zone3 != null) { bg.sprite = zone3; bg.color = new Color(1f, 1f, 1f, 0.85f); }
+            else                bg.color = new Color(0.55f, 0.65f, 0.55f);
+
+            // Top bar
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            TextMeshProUGUI title = CreateText(panel, "Title",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -100), new Vector2(700, 100),
+                TextAlignmentOptions.Center, 60, "명상 정원");
+            title.color = new Color(0.30f, 0.20f, 0.12f);
+            title.fontStyle = FontStyles.Bold;
+
+            TextMeshProUGUI peacePoint = CreateText(panel, "PeacePointText",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(320, 80),
+                TextAlignmentOptions.Right, 48, "⭐ 0");
+            peacePoint.color = new Color(0.30f, 0.30f, 0.50f);
+            peacePoint.fontStyle = FontStyles.Bold;
+
+            // Sand area (RawImage centered, ~900x1100)
+            RectTransform sandRoot = MakeRT(panel, "SandArea",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(900, 1100));
+            // Frame border
+            Image sandFrame = sandRoot.gameObject.AddComponent<Image>();
+            sandFrame.sprite = TileView.GetWhiteSprite();
+            sandFrame.color = new Color(0.42f, 0.32f, 0.20f);
+            sandFrame.raycastTarget = false;
+
+            GameObject sandGo = new GameObject("Sand", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
+            RectTransform sandRT = sandGo.GetComponent<RectTransform>();
+            sandRT.SetParent(sandRoot, false);
+            sandRT.anchorMin = Vector2.zero; sandRT.anchorMax = Vector2.one;
+            sandRT.offsetMin = new Vector2(20, 20); sandRT.offsetMax = new Vector2(-20, -20);
+            RawImage sandImage = sandGo.GetComponent<RawImage>();
+            sandImage.color = Color.white;
+            sandImage.raycastTarget = true;
+
+            // Bottom buttons
+            Button resetBtn = CreateButton(panel, "ResetButton",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-200, 160), new Vector2(360, 130),
+                "🌬 정원 초기화", new Color(0.55f, 0.55f, 0.60f, 1f));
+
+            Button endBtn = CreateButton(panel, "EndButton",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(200, 160), new Vector2(360, 130),
+                "⏸ 명상 종료", new Color(0.91f, 0.659f, 0.486f, 1f));
+
+            // Wind chime BGM placeholder — clip not assigned (자산 도착 시 채울 자리)
+            AudioSource bgm = panel.gameObject.AddComponent<AudioSource>();
+            bgm.playOnAwake = false;
+            bgm.loop = true;
+            bgm.spatialBlend = 0f;
+
+            MeditationGardenController ctrl = panel.gameObject.AddComponent<MeditationGardenController>();
+            InjectField(ctrl, "backgroundImage", bg);
+            InjectField(ctrl, "sandImage", sandImage);
+            InjectField(ctrl, "peacePointText", peacePoint);
+            InjectField(ctrl, "titleText", title);
+            InjectField(ctrl, "backButton", backBtn);
+            InjectField(ctrl, "resetButton", resetBtn);
+            InjectField(ctrl, "endButton", endBtn);
+            InjectField(ctrl, "bgmSource", bgm);
+
+            meditationController = ctrl;
+            return panel;
         }
 
         // ===== Phase B-2: Detox modal + Sleep mode =====
