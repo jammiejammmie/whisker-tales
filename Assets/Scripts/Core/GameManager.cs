@@ -20,7 +20,8 @@ namespace WhiskerTales.Core
         Arcade,     // 미니게임 오락실 (§Phase B)
         MeditationGarden, // 명상 정원 (§3-2 Phase B-3)
         PhotoStudio,      // 고양이 포토 스튜디오 (§3-4 Phase B-3)
-        ShareCard         // 레퍼럴 공유 카드 (Phase C-2)
+        ShareCard,        // 레퍼럴 공유 카드 (Phase C-2)
+        Diagnostics       // 품질 진단 (Stage 4B 도구)
     }
 
     /// <summary>

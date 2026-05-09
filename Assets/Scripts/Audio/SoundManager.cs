@@ -42,6 +42,8 @@ namespace WhiskerTales.Audio
 
         public SoundMode CurrentMode => currentMode;
         public float SfxVolume => sfxVolume;
+        public int CatClipCount => catClips.Count;
+        public int NormalClipCount => normalClips.Count;
 
         private void Awake()
         {

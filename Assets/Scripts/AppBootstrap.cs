@@ -64,6 +64,8 @@ namespace WhiskerTales.Bootstrap
         private TutorialOverlay tutorialOverlay;
         private RectTransform shareCardPanel;
         private ReferralShareCardScreen shareCardScreen;
+        private RectTransform diagnosticsPanel;
+        private DiagnosticsScreen diagnosticsScreen;
         private IdleRewardModal idleRewardModal;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
@@ -98,6 +100,7 @@ namespace WhiskerTales.Bootstrap
             photoStudioPanel = BuildPhotoStudioPanel(rootCanvas.transform);
             settingsPanel    = BuildSettingsPanel(rootCanvas.transform);
             shareCardPanel   = BuildShareCardPanel(rootCanvas.transform);
+            diagnosticsPanel = BuildDiagnosticsPanel(rootCanvas.transform);
             openingPanel    = BuildOpeningPanel(rootCanvas.transform);
             loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
@@ -116,6 +119,7 @@ namespace WhiskerTales.Bootstrap
                 { NavigationTarget.PhotoStudio,      photoStudioPanel },
                 { NavigationTarget.Settings,         settingsPanel },
                 { NavigationTarget.ShareCard,        shareCardPanel },
+                { NavigationTarget.Diagnostics,      diagnosticsPanel },
             };
 
             if (GameManager.Instance != null)
@@ -1563,6 +1567,10 @@ namespace WhiskerTales.Bootstrap
             Button friendCodeSubmit = BuildSubmitRow(content, "친구 코드 사용 (하트 +3)");
             TMP_Text friendCodeStatus = BuildTextRow(content, "상태", "", rowBg);
 
+            // ===== 개발자 도구 (Stage 4B) =====
+            BuildSectionHeader(content, "🔍 개발자 도구", sectionHeaderColor);
+            Button diagnosticsBtn = BuildLinkRow(content, "🔍 품질 진단", rowBg);
+
             // Attach script + inject
             SettingsScreen screen = panel.gameObject.AddComponent<SettingsScreen>();
             InjectField(screen, "backButton", backBtn);
@@ -1594,7 +1602,69 @@ namespace WhiskerTales.Bootstrap
             InjectField(screen, "friendCodeSubmitButton", friendCodeSubmit);
             InjectField(screen, "friendCodeStatusText", friendCodeStatus);
 
+            // Stage 4B diagnostics
+            InjectField(screen, "diagnosticsButton", diagnosticsBtn);
+
             settingsScreen = screen;
+            return panel;
+        }
+
+        // ===== DIAGNOSTICS (Stage 4B) =====
+
+        private RectTransform BuildDiagnosticsPanel(Transform parent)
+        {
+            Color paperBg = new Color(0.96f, 0.945f, 0.91f);
+            Color titleBrown = new Color(0.30f, 0.20f, 0.12f);
+
+            RectTransform panel = NewPanel(parent, "DiagnosticsPanel");
+            panel.gameObject.SetActive(false);
+            Image bg = panel.GetComponent<Image>();
+            bg.color = paperBg;
+
+            // Top bar
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            CreateText(panel, "Title",
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -100), new Vector2(900, 100),
+                TextAlignmentOptions.Center, 60, "🔍 품질 진단")
+                .color = titleBrown;
+
+            // Summary text (총점)
+            TextMeshProUGUI summaryText = CreateText(panel, "SummaryText",
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -200), new Vector2(900, 80),
+                TextAlignmentOptions.Center, 52, "—/— PASS");
+            summaryText.fontStyle = FontStyles.Bold;
+            summaryText.color = new Color(0.20f, 0.55f, 0.30f);
+
+            // Action row (Copy + Rerun) — 상단
+            Button copyBtn = CreateButton(panel, "CopyButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(280, -210), new Vector2(360, 90),
+                "📋 리포트 복사", new Color(0.483f, 0.722f, 0.553f));
+            Button rerunBtn = CreateButton(panel, "RerunButton",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-280, -210), new Vector2(360, 90),
+                "🔄 다시 실행", new Color(0.55f, 0.55f, 0.60f));
+
+            // ScrollRect
+            ScrollRect scroll = BuildScrollRect(panel, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            RectTransform scrollRT = (RectTransform)scroll.transform;
+            scrollRT.offsetMin = new Vector2(40, 30);
+            scrollRT.offsetMax = new Vector2(-40, -290);
+            scroll.verticalScrollbar = null;
+            scroll.horizontalScrollbar = null;
+            RectTransform content = scroll.content;
+            VerticalLayoutGroup vlg = content.GetComponent<VerticalLayoutGroup>();
+            if (vlg != null) { vlg.spacing = 8; vlg.padding = new RectOffset(8, 8, 8, 8); }
+
+            DiagnosticsScreen screen = panel.gameObject.AddComponent<DiagnosticsScreen>();
+            InjectField(screen, "backButton", backBtn);
+            InjectField(screen, "copyReportButton", copyBtn);
+            InjectField(screen, "rerunButton", rerunBtn);
+            InjectField(screen, "summaryText", summaryText);
+            InjectField(screen, "scrollContent", content);
+
+            diagnosticsScreen = screen;
             return panel;
         }
 

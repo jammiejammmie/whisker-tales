@@ -63,6 +63,9 @@ namespace WhiskerTales.UI
         [SerializeField] private Button friendCodeSubmitButton;
         [SerializeField] private TMP_Text friendCodeStatusText;
 
+        [Header("Diagnostics (Stage 4B)")]
+        [SerializeField] private Button diagnosticsButton;
+
         private static readonly Color SelectedColor   = new Color(0.95f, 0.55f, 0.30f, 1f);
         private static readonly Color UnselectedColor = new Color(0.55f, 0.55f, 0.60f, 1f);
         private static readonly Color StarFilledColor = new Color(1f, 0.85f, 0.30f);
@@ -119,6 +122,8 @@ namespace WhiskerTales.UI
 
             if (viewShareCardButton != null) viewShareCardButton.onClick.AddListener(HandleViewShareCard);
             if (friendCodeSubmitButton != null) friendCodeSubmitButton.onClick.AddListener(HandleFriendCodeSubmit);
+
+            if (diagnosticsButton != null) diagnosticsButton.onClick.AddListener(HandleOpenDiagnostics);
         }
 
         private void UnbindButtons()
@@ -145,6 +150,14 @@ namespace WhiskerTales.UI
 
             if (viewShareCardButton != null) viewShareCardButton.onClick.RemoveListener(HandleViewShareCard);
             if (friendCodeSubmitButton != null) friendCodeSubmitButton.onClick.RemoveListener(HandleFriendCodeSubmit);
+
+            if (diagnosticsButton != null) diagnosticsButton.onClick.RemoveListener(HandleOpenDiagnostics);
+        }
+
+        private void HandleOpenDiagnostics()
+        {
+            AudioManager.instance?.PlayButtonClick();
+            GameManager.Instance?.RequestNavigation(NavigationTarget.Diagnostics);
         }
 
         // ===== State refresh =====
