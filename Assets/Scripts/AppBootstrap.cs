@@ -40,6 +40,8 @@ namespace WhiskerTales.Bootstrap
         private RectTransform gameplayPanel;
         private RectTransform catRoomPanel;
         private RectTransform cafePanel;
+        private RectTransform openingPanel;
+        private OpeningScenario openingScenario;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
         private void Awake()
@@ -57,6 +59,7 @@ namespace WhiskerTales.Bootstrap
             gameplayPanel = BuildGameplayPanel(rootCanvas.transform);
             catRoomPanel  = BuildCatRoomPanel(rootCanvas.transform);
             cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
+            openingPanel  = BuildOpeningPanel(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
@@ -69,8 +72,13 @@ namespace WhiskerTales.Bootstrap
             if (GameManager.Instance != null)
                 GameManager.Instance.OnNavigationRequested += ShowPanel;
 
-            ShowPanel(initialPanel);
-            Debug.Log("[AppBootstrap] Scene constructed");
+            bool firstRun = PlayerPrefs.GetInt(OpeningScenario.PREF_SEEN, 0) == 0;
+            if (firstRun)
+                StartOpeningScenario();
+            else
+                ShowPanel(initialPanel);
+
+            Debug.Log($"[AppBootstrap] Scene constructed (firstRun={firstRun})");
         }
 
         private void OnDestroy()
@@ -879,6 +887,141 @@ namespace WhiskerTales.Bootstrap
             scroll.viewport = viewport;
             scroll.content = content;
             return scroll;
+        }
+
+        // ===== OPENING SCENARIO (§4-10) =====
+
+        private RectTransform BuildOpeningPanel(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "OpeningPanel");
+            panel.gameObject.SetActive(false);
+
+            Image bg = panel.GetComponent<Image>();
+            bg.color = new Color(0.10f, 0.12f, 0.18f);
+
+            // Tap area (full-screen, near-invisible — captures background taps to advance)
+            GameObject tapGo = new GameObject("TapArea",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            RectTransform tapRT = tapGo.GetComponent<RectTransform>();
+            tapRT.SetParent(panel, false);
+            tapRT.anchorMin = Vector2.zero; tapRT.anchorMax = Vector2.one;
+            tapRT.offsetMin = Vector2.zero; tapRT.offsetMax = Vector2.zero;
+            Image tapImg = tapGo.GetComponent<Image>();
+            tapImg.sprite = TileView.GetWhiteSprite();
+            tapImg.color = new Color(0, 0, 0, 0.001f);
+            tapImg.raycastTarget = true;
+            Button tapBtn = tapGo.GetComponent<Button>();
+
+            // Letter panel (centered, beige paper, hidden default)
+            RectTransform letter = MakeRT(panel, "Letter",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820, 620));
+            Image letterBg = letter.gameObject.AddComponent<Image>();
+            letterBg.sprite = TileView.GetWhiteSprite();
+            letterBg.color = new Color(0.95f, 0.92f, 0.85f);
+            letterBg.raycastTarget = false; // let taps pass to TapArea
+
+            TextMeshProUGUI letterTxt = CreateText(letter, "LetterText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 50, "");
+            ((RectTransform)letterTxt.transform).offsetMin = new Vector2(48, 48);
+            ((RectTransform)letterTxt.transform).offsetMax = new Vector2(-48, -48);
+            letterTxt.color = new Color(0.20f, 0.18f, 0.15f);
+            letterTxt.raycastTarget = false;
+            letter.gameObject.SetActive(false);
+
+            // Cat (centered, hidden default)
+            Image cat = CreateImageObject(panel, "CatImage",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 100), new Vector2(700, 800));
+            cat.preserveAspect = true;
+            cat.raycastTarget = false;
+            cat.gameObject.SetActive(false);
+
+            // Narration backdrop + text (bottom)
+            RectTransform narrBackdrop = MakeRT(panel, "NarrationBackdrop",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 280), new Vector2(960, 360));
+            Image narrBg = narrBackdrop.gameObject.AddComponent<Image>();
+            narrBg.sprite = TileView.GetWhiteSprite();
+            narrBg.color = new Color(0, 0, 0, 0.65f);
+            narrBg.raycastTarget = false;
+
+            TextMeshProUGUI narration = CreateText(narrBackdrop, "NarrationText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 50, "");
+            ((RectTransform)narration.transform).offsetMin = new Vector2(40, 30);
+            ((RectTransform)narration.transform).offsetMax = new Vector2(-40, -30);
+            narration.raycastTarget = false;
+
+            // Skip button (top-right)
+            Button skipBtn = CreateButton(panel, "SkipButton",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-160, -100), new Vector2(220, 90),
+                "Skip", new Color(0.30f, 0.30f, 0.35f, 0.85f));
+
+            // Start button (bottom-center, hidden default)
+            Button startBtn = CreateButton(panel, "StartButton",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 100), new Vector2(560, 140),
+                "시작하기", new Color(0.95f, 0.55f, 0.30f, 1f));
+            startBtn.gameObject.SetActive(false);
+
+            // Audio source for cat meow
+            AudioSource sfx = panel.gameObject.AddComponent<AudioSource>();
+            sfx.playOnAwake = false;
+            sfx.spatialBlend = 0f;
+
+            AudioClip catMeow = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_nabi.wav");
+            Sprite catSpr   = spriteLib.GetCatPortrait(Constants.CAT_NABI);
+            Sprite cafeBgSpr = spriteLib.GetBackground(1, 1);
+
+            OpeningScenario opening = panel.gameObject.AddComponent<OpeningScenario>();
+            InjectField(opening, "backgroundImage", bg);
+            InjectField(opening, "letterPanel", letter);
+            InjectField(opening, "letterText", letterTxt);
+            InjectField(opening, "catImage", cat);
+            InjectField(opening, "narrationText", narration);
+            InjectField(opening, "tapAreaButton", tapBtn);
+            InjectField(opening, "skipButton", skipBtn);
+            InjectField(opening, "startButton", startBtn);
+            InjectField(opening, "cafeBgSprite", cafeBgSpr);
+            InjectField(opening, "catSprite", catSpr);
+            InjectField(opening, "catMeowClip", catMeow);
+            InjectField(opening, "sfxSource", sfx);
+
+            openingScenario = opening;
+            return panel;
+        }
+
+        private static AudioClip LoadAudioClipAt(string assetPath)
+        {
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<AudioClip>(assetPath);
+#else
+            return null;
+#endif
+        }
+
+        private void StartOpeningScenario()
+        {
+            if (panels != null)
+            {
+                foreach (var kv in panels)
+                {
+                    if (kv.Value != null) kv.Value.gameObject.SetActive(false);
+                }
+            }
+            if (openingPanel == null) return;
+
+            if (openingScenario != null)
+            {
+                openingScenario.OnComplete -= HandleOpeningComplete;
+                openingScenario.OnComplete += HandleOpeningComplete;
+            }
+            openingPanel.gameObject.SetActive(true);
+        }
+
+        private void HandleOpeningComplete()
+        {
+            if (openingPanel != null) openingPanel.gameObject.SetActive(false);
+            GameManager.Instance?.StartLevel(1);
+            ShowPanel(NavigationTarget.Gameplay);
         }
 
         // ===== Placeholder panel =====
