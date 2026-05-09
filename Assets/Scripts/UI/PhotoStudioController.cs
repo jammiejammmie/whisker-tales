@@ -185,16 +185,8 @@ namespace WhiskerTales.UI
         private void HandleShare()
         {
             AudioManager.instance?.PlayButtonClick();
-            if (string.IsNullOrEmpty(lastCapturedPath))
-            {
-                Debug.LogWarning("[PhotoStudio] No capture available — press 📸 first.");
-                return;
-            }
-
-            string shareText = BuildShareText();
-            // NativeShare 플러그인 미설치 — 후속에서 yasirkula/UnityNativeShare 통합 시 아래 코드를 활성화:
-            //   new NativeShare().AddFile(lastCapturedPath).SetText(shareText).Share();
-            Debug.Log($"[PhotoStudio] (Stub) Would share file={lastCapturedPath}\nText:\n{shareText}");
+            // Phase C-2: 공유 카드 화면으로 이동 (레퍼럴 코드 포함). 캡처된 PNG는 lastCapturedPath에 보존됨.
+            GameManager.Instance?.RequestNavigation(NavigationTarget.ShareCard);
         }
 
         private string BuildShareText()

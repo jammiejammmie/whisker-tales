@@ -10,6 +10,7 @@ using WhiskerTales.Cat;
 using WhiskerTales.Core;
 using WhiskerTales.Currency;
 using WhiskerTales.Puzzle;
+using WhiskerTales.Referral;
 using WhiskerTales.Settings;
 using WhiskerTales.Sleep;
 using WhiskerTales.UI;
@@ -65,12 +66,15 @@ namespace WhiskerTales.Bootstrap
         private RectTransform settingsPanel;
         private SettingsScreen settingsScreen;
         private TutorialOverlay tutorialOverlay;
+        private RectTransform shareCardPanel;
+        private ReferralShareCardScreen shareCardScreen;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
         public PhotoStudioController PhotoStudio => photoStudioController;
         public SettingsScreen Settings => settingsScreen;
         public TutorialOverlay Tutorial => tutorialOverlay;
+        public ReferralShareCardScreen ShareCard => shareCardScreen;
 
         public DetoxMessageModal DetoxModal => detoxModal;
         public SleepModeScreen SleepScreen => sleepModeScreen;
@@ -95,6 +99,7 @@ namespace WhiskerTales.Bootstrap
             meditationPanel = BuildMeditationGardenPanel(rootCanvas.transform);
             photoStudioPanel = BuildPhotoStudioPanel(rootCanvas.transform);
             settingsPanel    = BuildSettingsPanel(rootCanvas.transform);
+            shareCardPanel   = BuildShareCardPanel(rootCanvas.transform);
             openingPanel    = BuildOpeningPanel(rootCanvas.transform);
             loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
@@ -111,6 +116,7 @@ namespace WhiskerTales.Bootstrap
                 { NavigationTarget.MeditationGarden, meditationPanel },
                 { NavigationTarget.PhotoStudio,      photoStudioPanel },
                 { NavigationTarget.Settings,         settingsPanel },
+                { NavigationTarget.ShareCard,        shareCardPanel },
             };
 
             if (GameManager.Instance != null)
@@ -186,6 +192,10 @@ namespace WhiskerTales.Bootstrap
             if (SleepModeManager.Instance == null)
             {
                 managers.AddComponent<SleepModeManager>();
+            }
+            if (ReferralManager.Instance == null)
+            {
+                managers.AddComponent<ReferralManager>();
             }
 
             if (I18nManager.Instance != null)
@@ -1489,6 +1499,14 @@ namespace WhiskerTales.Bootstrap
             TMP_InputField feedbackInput = BuildInputRow(content, "한 줄 피드백을 남겨주세요...");
             Button feedbackSubmit = BuildSubmitRow(content, "제출");
 
+            // ===== 친구 초대 (Phase C-2) =====
+            BuildSectionHeader(content, "🐾 친구 초대", sectionHeaderColor);
+            TMP_Text myCodeText = BuildTextRow(content, "내 코드", "—", rowBg);
+            Button viewShareCardBtn = BuildLinkRow(content, "공유 카드 보기", rowBg);
+            TMP_InputField friendCodeInput = BuildInputRow(content, "친구 코드 입력 (예: NABI-1234)");
+            Button friendCodeSubmit = BuildSubmitRow(content, "친구 코드 사용 (하트 +3)");
+            TMP_Text friendCodeStatus = BuildTextRow(content, "상태", "", rowBg);
+
             // Attach script + inject
             SettingsScreen screen = panel.gameObject.AddComponent<SettingsScreen>();
             InjectField(screen, "backButton", backBtn);
@@ -1512,6 +1530,13 @@ namespace WhiskerTales.Bootstrap
             InjectField(screen, "starEmptySprite", spriteLib.iconStarEmpty);
             InjectField(screen, "feedbackInput", feedbackInput);
             InjectField(screen, "feedbackSubmitButton", feedbackSubmit);
+
+            // Phase C-2 referral
+            InjectField(screen, "myCodeText", myCodeText);
+            InjectField(screen, "viewShareCardButton", viewShareCardBtn);
+            InjectField(screen, "friendCodeInput", friendCodeInput);
+            InjectField(screen, "friendCodeSubmitButton", friendCodeSubmit);
+            InjectField(screen, "friendCodeStatusText", friendCodeStatus);
 
             settingsScreen = screen;
             return panel;
@@ -1742,6 +1767,73 @@ namespace WhiskerTales.Bootstrap
             ((RectTransform)b.transform).offsetMin = new Vector2(40, 15);
             ((RectTransform)b.transform).offsetMax = new Vector2(-40, -15);
             return b;
+        }
+
+        // ===== Phase C-2: Referral Share Card =====
+
+        private RectTransform BuildShareCardPanel(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "ShareCardPanel");
+            panel.gameObject.SetActive(false);
+            Image bg = panel.GetComponent<Image>();
+            bg.color = new Color(0.96f, 0.945f, 0.91f);
+
+            // Top bar
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            TextMeshProUGUI title = CreateText(panel, "Title",
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -100), new Vector2(700, 100),
+                TextAlignmentOptions.Center, 60, "친구 초대");
+            title.color = new Color(0.30f, 0.20f, 0.12f);
+            title.fontStyle = FontStyles.Bold;
+
+            // Cat image (center upper)
+            Image cat = CreateImageObject(panel, "CatImage",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 250), new Vector2(560, 700));
+            cat.preserveAspect = true;
+            cat.raycastTarget = false;
+
+            // Code display (large)
+            TextMeshProUGUI code = CreateText(panel, "CodeText",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -300), new Vector2(820, 140),
+                TextAlignmentOptions.Center, 88, "NABI-0000");
+            code.color = new Color(0.95f, 0.55f, 0.30f);
+            code.fontStyle = FontStyles.Bold;
+            code.raycastTarget = false;
+
+            // Description
+            TextMeshProUGUI desc = CreateText(panel, "DescriptionText",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, -460), new Vector2(820, 140),
+                TextAlignmentOptions.Center, 36, "");
+            desc.color = new Color(0.30f, 0.20f, 0.12f, 0.85f);
+            desc.raycastTarget = false;
+
+            // Share button
+            Button shareBtn = CreateButton(panel, "ShareButton",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 160), new Vector2(560, 140),
+                "📤 공유하기", new Color(0.40f, 0.62f, 0.95f, 1f));
+
+            // Cat sprites array (front portrait, indexed by catId 1..5; slot 0 unused)
+            Sprite[] frontArr = new Sprite[6];
+            int[] catIds = { Constants.CAT_NABI, Constants.CAT_BELLA, Constants.CAT_SAMI, Constants.CAT_HODU, Constants.CAT_GUREUMI };
+            foreach (int id in catIds)
+            {
+                if (id >= 0 && id < frontArr.Length) frontArr[id] = spriteLib.GetCatPortrait(id);
+            }
+
+            ReferralShareCardScreen screen = panel.gameObject.AddComponent<ReferralShareCardScreen>();
+            InjectField(screen, "backButton", backBtn);
+            InjectField(screen, "titleText", title);
+            InjectField(screen, "catImage", cat);
+            InjectField(screen, "codeText", code);
+            InjectField(screen, "descriptionText", desc);
+            InjectField(screen, "shareButton", shareBtn);
+            InjectField(screen, "catSpritesByCatId", frontArr);
+
+            shareCardScreen = screen;
+            return panel;
         }
 
         // ===== Phase B-3: Photo Studio (§3-4) =====

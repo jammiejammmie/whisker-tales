@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 using WhiskerTales.Audio;
 using WhiskerTales.Core;
+using WhiskerTales.Referral;
 using WhiskerTales.Settings;
 
 namespace WhiskerTales.UI
@@ -54,6 +55,13 @@ namespace WhiskerTales.UI
         [SerializeField] private Sprite starEmptySprite;  // §7-2 icon_star_empty.png
         [SerializeField] private TMP_InputField feedbackInput;
         [SerializeField] private Button feedbackSubmitButton;
+
+        [Header("Referral (Phase C-2)")]
+        [SerializeField] private TMP_Text myCodeText;
+        [SerializeField] private Button viewShareCardButton;
+        [SerializeField] private TMP_InputField friendCodeInput;
+        [SerializeField] private Button friendCodeSubmitButton;
+        [SerializeField] private TMP_Text friendCodeStatusText;
 
         private static readonly Color SelectedColor   = new Color(0.95f, 0.55f, 0.30f, 1f);
         private static readonly Color UnselectedColor = new Color(0.55f, 0.55f, 0.60f, 1f);
@@ -108,6 +116,9 @@ namespace WhiskerTales.UI
                 }
             }
             if (feedbackSubmitButton != null) feedbackSubmitButton.onClick.AddListener(HandleFeedbackSubmit);
+
+            if (viewShareCardButton != null) viewShareCardButton.onClick.AddListener(HandleViewShareCard);
+            if (friendCodeSubmitButton != null) friendCodeSubmitButton.onClick.AddListener(HandleFriendCodeSubmit);
         }
 
         private void UnbindButtons()
@@ -131,6 +142,9 @@ namespace WhiskerTales.UI
             if (starButtons != null)
                 foreach (var b in starButtons) if (b != null) b.onClick.RemoveAllListeners();
             if (feedbackSubmitButton != null) feedbackSubmitButton.onClick.RemoveListener(HandleFeedbackSubmit);
+
+            if (viewShareCardButton != null) viewShareCardButton.onClick.RemoveListener(HandleViewShareCard);
+            if (friendCodeSubmitButton != null) friendCodeSubmitButton.onClick.RemoveListener(HandleFriendCodeSubmit);
         }
 
         // ===== State refresh =====
@@ -152,6 +166,58 @@ namespace WhiskerTales.UI
             if (versionLabel != null) versionLabel.text = $"버전 {APP_VERSION}";
 
             UpdateStarsVisual();
+            RefreshReferralUI();
+        }
+
+        // ===== Phase C-2 Referral =====
+
+        private void RefreshReferralUI()
+        {
+            ReferralManager r = ReferralManager.Instance;
+            if (myCodeText != null)
+            {
+                myCodeText.text = r != null ? r.MyCode : "—";
+            }
+            bool redeemed = r != null && r.IsFriendCodeRedeemed;
+            if (friendCodeStatusText != null)
+            {
+                friendCodeStatusText.text = redeemed ? "친구 코드 사용 완료 ✓" : "";
+                friendCodeStatusText.color = redeemed ? new Color(0.30f, 0.65f, 0.40f) : new Color(0.85f, 0.45f, 0.30f);
+            }
+            if (friendCodeInput != null) friendCodeInput.interactable = !redeemed;
+            if (friendCodeSubmitButton != null) friendCodeSubmitButton.interactable = !redeemed;
+        }
+
+        private void HandleViewShareCard()
+        {
+            AudioManager.instance?.PlayButtonClick();
+            GameManager.Instance?.RequestNavigation(NavigationTarget.ShareCard);
+        }
+
+        private void HandleFriendCodeSubmit()
+        {
+            AudioManager.instance?.PlayButtonClick();
+            ReferralManager r = ReferralManager.Instance;
+            if (r == null) return;
+            string raw = friendCodeInput != null ? friendCodeInput.text : "";
+            if (r.TryRedeemFriendCode(raw, out string failReason))
+            {
+                if (friendCodeStatusText != null)
+                {
+                    friendCodeStatusText.text = $"친구 코드 사용 완료 ✓ — 하트 +{ReferralManager.FRIEND_REDEEM_LIVES}";
+                    friendCodeStatusText.color = new Color(0.30f, 0.65f, 0.40f);
+                }
+                if (friendCodeInput != null) { friendCodeInput.text = ""; friendCodeInput.interactable = false; }
+                if (friendCodeSubmitButton != null) friendCodeSubmitButton.interactable = false;
+            }
+            else
+            {
+                if (friendCodeStatusText != null)
+                {
+                    friendCodeStatusText.text = failReason;
+                    friendCodeStatusText.color = new Color(0.85f, 0.45f, 0.30f);
+                }
+            }
         }
 
         // ===== Toggles =====
