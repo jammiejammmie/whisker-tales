@@ -83,21 +83,22 @@ namespace WhiskerTales.EditorTests
             int passed = 0, failed = 0;
             string[] names = { "icon_paw", "icon_lock", "icon_heart", "icon_star_filled", "icon_star_empty" };
 
+            // Resources/Sprites/Icons/ 에 있어야 APK 빌드에 포함됨. 런타임 코드와 동일한 Resources.Load 경로로 검증.
             foreach (string name in names)
             {
-                string path = $"Assets/Sprites/Icons/{name}.png";
-                Sprite sp = AssetDatabase.LoadAssetAtPath<Sprite>(path);
-                Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                string resourcesPath = $"Sprites/Icons/{name}";
+                Sprite sp = Resources.Load<Sprite>(resourcesPath);
+                Texture2D tex = Resources.Load<Texture2D>(resourcesPath);
                 bool exists = sp != null || tex != null;
                 if (exists)
                 {
                     string srcType = (sp != null) ? "Sprite" : "Texture2D fallback";
-                    Debug.Log($"  [PASS] {name}.png — loaded as {srcType}");
+                    Debug.Log($"  [PASS] {name} — loaded from Resources/{resourcesPath} as {srcType}");
                     passed++;
                 }
                 else
                 {
-                    Debug.LogError($"  [FAIL] {name}.png — not found at {path}");
+                    Debug.LogError($"  [FAIL] {name} — not found at Resources/{resourcesPath}");
                     failed++;
                 }
             }
