@@ -118,6 +118,53 @@ namespace WhiskerTales.Bootstrap
 
             if (I18nManager.Instance != null)
                 I18nManager.Instance.SetLanguage(Application.systemLanguage);
+
+            InstallKoreanFontFallback();
+        }
+
+        /// <summary>
+        /// LiberationSans SDF (TMP Essentials 기본 폰트)에는 한글 글리프가 없어서
+        /// 한국어 텍스트가 □로 렌더링됨. Windows의 Malgun Gothic 등 OS 폰트로
+        /// 동적 TMP_FontAsset를 만들어 fallback 체인에 등록.
+        /// </summary>
+        private static void InstallKoreanFontFallback()
+        {
+            try
+            {
+                if (TMPro.TMP_Settings.fallbackFontAssets == null) return;
+
+                Font osFont = null;
+                string[] candidates = { "Malgun Gothic", "맑은 고딕", "NanumGothic", "Noto Sans KR", "Gulim", "Dotum", "Batang" };
+                foreach (string name in candidates)
+                {
+                    osFont = Font.CreateDynamicFontFromOSFont(name, 32);
+                    if (osFont != null) break;
+                }
+                if (osFont == null)
+                {
+                    Debug.LogWarning("[AppBootstrap] No Korean OS font found — Korean text will render as □.");
+                    return;
+                }
+
+                TMPro.TMP_FontAsset koAsset = TMPro.TMP_FontAsset.CreateFontAsset(osFont);
+                if (koAsset == null)
+                {
+                    Debug.LogWarning($"[AppBootstrap] CreateFontAsset returned null for {osFont.name}.");
+                    return;
+                }
+
+                koAsset.name = $"{osFont.name} Dynamic Korean Fallback";
+                koAsset.atlasPopulationMode = TMPro.AtlasPopulationMode.Dynamic;
+
+                if (!TMPro.TMP_Settings.fallbackFontAssets.Contains(koAsset))
+                    TMPro.TMP_Settings.fallbackFontAssets.Add(koAsset);
+
+                Debug.Log($"[AppBootstrap] Korean fallback registered via OS font '{osFont.name}'.");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[AppBootstrap] Failed to install Korean font fallback: {e.Message}");
+            }
         }
 
         // ===== canvas =====
@@ -780,14 +827,11 @@ namespace WhiskerTales.Bootstrap
             scroll.vertical = true;
             scroll.movementType = ScrollRect.MovementType.Clamped;
 
-            // Viewport (mask)
+            // Viewport (RectMask2D — no graphic required, clips by RectTransform bounds)
             RectTransform viewport = MakeRT(rt, "Viewport",
                 new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero);
             viewport.offsetMin = new Vector2(8, 8); viewport.offsetMax = new Vector2(-8, -8);
-            Image vpImg = viewport.gameObject.AddComponent<Image>();
-            vpImg.sprite = TileView.GetWhiteSprite();
-            vpImg.color = new Color(0, 0, 0, 0.001f);
-            viewport.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            viewport.gameObject.AddComponent<RectMask2D>();
 
             // Content
             RectTransform content = MakeRT(viewport, "Content",
@@ -798,7 +842,7 @@ namespace WhiskerTales.Bootstrap
             vlg.spacing = 12;
             vlg.childAlignment = TextAnchor.UpperCenter;
             vlg.childControlWidth = true;
-            vlg.childControlHeight = false;
+            vlg.childControlHeight = true;   // honor each card's LayoutElement.preferredHeight (140)
             vlg.childForceExpandWidth = true;
             vlg.childForceExpandHeight = false;
             ContentSizeFitter csf = content.gameObject.AddComponent<ContentSizeFitter>();
