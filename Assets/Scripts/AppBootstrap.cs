@@ -17,17 +17,12 @@ using WhiskerTales.Sleep;
 using WhiskerTales.UI;
 using WhiskerTales.Utilities;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 namespace WhiskerTales.Bootstrap
 {
     /// <summary>
     /// Single entry-point. Attach to ONE empty GameObject in MainScenes.unity, press Play.
     /// Auto-generates managers + UI without any Inspector wiring.
-    /// PNG sprites are loaded directly from Assets/Sprites/ via AssetDatabase (Editor only) —
-    /// no file moves required. Runtime builds need Addressables/Resources (TODO).
+    /// All assets (sprites, audio, JSON) loaded via Resources.Load — bundled in APK build.
     /// </summary>
     [DefaultExecutionOrder(-500)]
     public class AppBootstrap : MonoBehaviour
@@ -810,19 +805,14 @@ namespace WhiskerTales.Bootstrap
 
         private static CafeRestorationManager.CafeRestorationData LoadCafeRestorationData()
         {
-#if UNITY_EDITOR
-            const string path = "Assets/_Data/Cafe/CafeRestorationData.json";
-            TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
-            if (asset != null)
+            // Resources/CafeRestorationData.json — bundled in build.
+            TextAsset asset = Resources.Load<TextAsset>("CafeRestorationData");
+            if (asset == null)
             {
-                return JsonUtility.FromJson<CafeRestorationManager.CafeRestorationData>(asset.text);
+                Debug.LogWarning("[AppBootstrap] Resources/CafeRestorationData.json not found. Cafe screen will be empty.");
+                return null;
             }
-            Debug.LogWarning($"[AppBootstrap] {path} not found. Cafe screen will be empty.");
-            return null;
-#else
-            // Runtime build: would need StreamingAssets/Resources/Addressables.
-            return null;
-#endif
+            return JsonUtility.FromJson<CafeRestorationManager.CafeRestorationData>(asset.text);
         }
 
         private RectTransform BuildCafeRestorationPanel(Transform parent)
@@ -1310,7 +1300,7 @@ namespace WhiskerTales.Bootstrap
             sfx.playOnAwake = false;
             sfx.spatialBlend = 0f;
 
-            AudioClip catMeow = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_nabi.wav");
+            AudioClip catMeow = LoadAudioClip("Audio/Cats/cat_meow_nabi");
             Sprite catSpr   = spriteLib.GetCatPortrait(Constants.CAT_NABI);
             Sprite cafeBgSpr = spriteLib.GetBackground(1, 1);
 
@@ -1332,13 +1322,13 @@ namespace WhiskerTales.Bootstrap
             return panel;
         }
 
-        private static AudioClip LoadAudioClipAt(string assetPath)
+        /// <summary>
+        /// Resources.Load 기반 AudioClip 로더. Editor + APK build 양쪽 호환.
+        /// resourcesPath: 확장자/Assets prefix 없이 "Audio/Cats/cat_meow_nabi" 형식.
+        /// </summary>
+        private static AudioClip LoadAudioClip(string resourcesPath)
         {
-#if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<AudioClip>(assetPath);
-#else
-            return null;
-#endif
+            return Resources.Load<AudioClip>(resourcesPath);
         }
 
         private void StartOpeningScenario()
@@ -2253,9 +2243,7 @@ namespace WhiskerTales.Bootstrap
             purring.playOnAwake = false;
             purring.loop = true;
             purring.spatialBlend = 0f;
-#if UNITY_EDITOR
-            purring.clip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Cats/cat_purring.wav");
-#endif
+            purring.clip = LoadAudioClip("Audio/Cats/cat_purring");
 
             // Reward modal (child of panel, hidden default)
             RectTransform rewardCard = MakeRT(panel, "RewardModal",
@@ -2299,35 +2287,31 @@ namespace WhiskerTales.Bootstrap
         /// <summary>
         /// §4-3 매핑대로 SoundManager에 cat 클립을 등록.
         /// 일반 모드 클립은 v1.0에서 자리만 (null 등록 안 함, Play시 dict 미스로 자연스럽게 무음).
-        /// 에디터 전용 AssetDatabase 로드 — APK 빌드는 후속 (Resources/StreamingAssets 정리 필요).
+        /// Resources/Audio/Cats/* 에서 로드 — APK 빌드 호환.
         /// </summary>
         private static void RegisterSoundManagerClips()
         {
             SoundManager sm = SoundManager.Instance;
             if (sm == null) return;
 
-#if UNITY_EDITOR
-            AudioClip nabi    = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_nabi.wav");
-            AudioClip hodu    = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_hodu.wav");
-            AudioClip bella   = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_bella.wav");
-            AudioClip sami    = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_sami.wav");
-            AudioClip gureumi = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_gureumi.wav");
-            AudioClip purring = LoadAudioClipAt("Assets/Audio/Cats/cat_purring.wav");
+            AudioClip nabi    = LoadAudioClip("Audio/Cats/cat_meow_nabi");
+            AudioClip hodu    = LoadAudioClip("Audio/Cats/cat_meow_hodu");
+            AudioClip bella   = LoadAudioClip("Audio/Cats/cat_meow_bella");
+            AudioClip sami    = LoadAudioClip("Audio/Cats/cat_meow_sami");
+            AudioClip gureumi = LoadAudioClip("Audio/Cats/cat_meow_gureumi");
+            AudioClip purring = LoadAudioClip("Audio/Cats/cat_purring");
 
-            sm.RegisterCatClip(SfxKey.Click,      nabi);     // 짧은 "냥"
-            sm.RegisterCatClip(SfxKey.Match,      hodu);     // "뿅" 톤
-            sm.RegisterCatClip(SfxKey.Combo,      bella);    // 흥분한 "냐~!"
-            sm.RegisterCatClip(SfxKey.LevelClear, sami);     // 길고 기쁜 "므야아~"
-            sm.RegisterCatClip(SfxKey.Coin,       bella);    // 방울 톤 (벨라 목방울)
-            sm.RegisterCatClip(SfxKey.Fail,       gureumi);  // 작고 실망한 "음냥..."
-            sm.RegisterCatClip(SfxKey.Pet,        purring);  // 골골송
+            sm.RegisterCatClip(SfxKey.Click,      nabi);
+            sm.RegisterCatClip(SfxKey.Match,      hodu);
+            sm.RegisterCatClip(SfxKey.Combo,      bella);
+            sm.RegisterCatClip(SfxKey.LevelClear, sami);
+            sm.RegisterCatClip(SfxKey.Coin,       bella);
+            sm.RegisterCatClip(SfxKey.Fail,       gureumi);
+            sm.RegisterCatClip(SfxKey.Pet,        purring);
 
             int registered = 0;
             foreach (var c in new[] { nabi, hodu, bella, sami, gureumi, purring }) if (c != null) registered++;
             Debug.Log($"[AppBootstrap] SoundManager cat clips registered: {registered}/6");
-#else
-            Debug.LogWarning("[AppBootstrap] SoundManager cat clips: editor-only loader — APK build needs StreamingAssets/Resources.");
-#endif
         }
 
         private LoadingScreen BuildLoadingScreen(Transform parent)
@@ -2357,9 +2341,7 @@ namespace WhiskerTales.Bootstrap
             purring.playOnAwake = false;
             purring.loop = true;
             purring.spatialBlend = 0f;
-#if UNITY_EDITOR
-            purring.clip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Cats/cat_purring.wav");
-#endif
+            purring.clip = LoadAudioClip("Audio/Cats/cat_purring");
 
             // Loading entries — 5 cats, messages from §5-3
             var entries = new LoadingScreen.CatLoadingEntry[]
@@ -2545,8 +2527,8 @@ namespace WhiskerTales.Bootstrap
     }
 
     /// <summary>
-    /// Loads sprites from Assets/Sprites/* via AssetDatabase. Editor-only — runtime builds
-    /// would need Addressables or Resources/. Keeps PNGs in their existing folders (no moves).
+    /// Loads sprites/audio/data from Assets/Resources/* via Resources.Load.
+    /// Works in Editor + APK build (assets must be under a Resources/ folder to be bundled).
     /// </summary>
     internal class SpriteLibrary
     {
@@ -2568,10 +2550,9 @@ namespace WhiskerTales.Bootstrap
         {
             backgroundsByZoneStage = new Sprite[3, 5];
 
-#if UNITY_EDITOR
             for (int z = 1; z <= 3; z++)
                 for (int s = 1; s <= 5; s++)
-                    backgroundsByZoneStage[z - 1, s - 1] = LoadSpriteAt($"Assets/Sprites/Backgrounds/bg_zone{z}_stage{s}.png");
+                    backgroundsByZoneStage[z - 1, s - 1] = LoadSprite($"Sprites/Backgrounds/bg_zone{z}_stage{s}");
 
             foreach (var kv in new (int id, string name)[]
             {
@@ -2582,30 +2563,26 @@ namespace WhiskerTales.Bootstrap
                 (Constants.CAT_GUREUMI, "gureumi"),
             })
             {
-                catPortraits[kv.id]     = LoadSpriteAt($"Assets/Sprites/Characters/cat_{kv.name}.png");
-                catPlayPortraits[kv.id] = LoadSpriteAt($"Assets/Sprites/Characters/cat_{kv.name}_play.png");
+                catPortraits[kv.id]     = LoadSprite($"Sprites/Characters/cat_{kv.name}");
+                catPlayPortraits[kv.id] = LoadSprite($"Sprites/Characters/cat_{kv.name}_play");
             }
 
             tiles = new Sprite[6];
-            tiles[(int)TileType.Fish]     = LoadSpriteAt("Assets/Sprites/Tiles/tile_fish.png");
-            tiles[(int)TileType.Milk]     = LoadSpriteAt("Assets/Sprites/Tiles/tile_milk.png");
-            tiles[(int)TileType.Yarn]     = LoadSpriteAt("Assets/Sprites/Tiles/tile_yarn.png");
-            tiles[(int)TileType.Catnip]   = LoadSpriteAt("Assets/Sprites/Tiles/tile_catnip.png");
-            tiles[(int)TileType.Pawprint] = LoadSpriteAt("Assets/Sprites/Tiles/tile_pawprint.png");
-            tiles[(int)TileType.Fishbone] = LoadSpriteAt("Assets/Sprites/Tiles/tile_fishbone.png");
+            tiles[(int)TileType.Fish]     = LoadSprite("Sprites/Tiles/tile_fish");
+            tiles[(int)TileType.Milk]     = LoadSprite("Sprites/Tiles/tile_milk");
+            tiles[(int)TileType.Yarn]     = LoadSprite("Sprites/Tiles/tile_yarn");
+            tiles[(int)TileType.Catnip]   = LoadSprite("Sprites/Tiles/tile_catnip");
+            tiles[(int)TileType.Pawprint] = LoadSprite("Sprites/Tiles/tile_pawprint");
+            tiles[(int)TileType.Fishbone] = LoadSprite("Sprites/Tiles/tile_fishbone");
 
             // §7-2 PNG icons (paw/lock/heart/star — replace Unicode emoji which Noto fonts don't include)
-            iconPaw         = LoadSpriteAt("Assets/Sprites/Icons/icon_paw.png");
-            iconLock        = LoadSpriteAt("Assets/Sprites/Icons/icon_lock.png");
-            iconHeart       = LoadSpriteAt("Assets/Sprites/Icons/icon_heart.png");
-            iconStarFilled  = LoadSpriteAt("Assets/Sprites/Icons/icon_star_filled.png");
-            iconStarEmpty   = LoadSpriteAt("Assets/Sprites/Icons/icon_star_empty.png");
-#else
-            Debug.LogWarning("[SpriteLibrary] Runtime build: Assets/Sprites/* not loadable without Addressables. Using fallback colors.");
-            tiles = new Sprite[6];
-#endif
+            iconPaw         = LoadSprite("Sprites/Icons/icon_paw");
+            iconLock        = LoadSprite("Sprites/Icons/icon_lock");
+            iconHeart       = LoadSprite("Sprites/Icons/icon_heart");
+            iconStarFilled  = LoadSprite("Sprites/Icons/icon_star_filled");
+            iconStarEmpty   = LoadSprite("Sprites/Icons/icon_star_empty");
 
-            // Procedural star sprites (simple colored squares — good enough until art is ready)
+            // Procedural star sprites (simple colored squares — used by LevelClearPanel etc as legacy)
             starFilled = MakeColoredSprite(new Color(1f, 0.85f, 0.30f));
             starEmpty  = MakeColoredSprite(new Color(0.30f, 0.30f, 0.35f));
         }
@@ -2650,22 +2627,19 @@ namespace WhiskerTales.Bootstrap
             return zoneArray;
         }
 
-#if UNITY_EDITOR
-        private static Sprite LoadSpriteAt(string assetPath)
+        /// <summary>
+        /// Resources.Load 기반 sprite 로더. Texture2D fallback 포함 (TextureType이
+        /// Sprite로 imported 안 됐어도 동작). Editor + APK build 양쪽 호환.
+        /// </summary>
+        private static Sprite LoadSprite(string resourcesPath)
         {
-            Sprite sp = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            Sprite sp = Resources.Load<Sprite>(resourcesPath);
             if (sp != null) return sp;
-
-            UnityEngine.Object[] all = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-            foreach (var o in all) if (o is Sprite s) return s;
-
-            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+            Texture2D tex = Resources.Load<Texture2D>(resourcesPath);
             if (tex != null) return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-
-            Debug.LogWarning($"[SpriteLibrary] Missing sprite: {assetPath}");
+            Debug.LogWarning($"[SpriteLibrary] Missing sprite at Resources/{resourcesPath}");
             return null;
         }
-#endif
 
         private static Sprite MakeColoredSprite(Color c)
         {
