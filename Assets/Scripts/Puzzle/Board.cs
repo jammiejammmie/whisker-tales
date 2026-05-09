@@ -310,20 +310,76 @@ namespace WhiskerTales.Puzzle
             return (TileType)randomIndex;
         }
 
+        /// <summary>
+        /// 보드 생성 직후 우연히 매치가 형성된 타일을 인접 타일과 비교해 비매치 타입으로 즉시 교체.
+        /// 기존 RemoveMatches→Gravity→FillEmpty 방식은 새로 채운 타일이 또 매치를 만들 수 있어 수렴 보장이 안 됐음.
+        /// 이 방식은 매 iter마다 매치 타일만 교체하므로 빠르게 수렴.
+        /// </summary>
         private void RemoveInitialMatches()
         {
-            int attempts = 0;
-            while (MatchLogic.FindAllMatches(board).Count > 0 && attempts < 10)
+            const int maxIterations = 100;
+            int iter = 0;
+            while (iter < maxIterations)
             {
                 List<List<TileData>> matches = MatchLogic.FindAllMatches(board);
-                RemoveMatches(matches);
-                ApplyGravity();
-                FillEmpty();
-                attempts++;
+                if (matches == null || matches.Count == 0) break;
+
+                HashSet<(int x, int y)> replaced = new HashSet<(int, int)>();
+                foreach (List<TileData> group in matches)
+                {
+                    foreach (TileData tile in group)
+                    {
+                        if (tile == null) continue;
+                        if (!replaced.Add((tile.x, tile.y))) continue;
+                        tile.type = PickNonMatchingType(tile.x, tile.y);
+                    }
+                }
+                iter++;
             }
-            if (attempts >= 10)
-                Debug.LogWarning("[Board] Could not remove all initial matches after 10 attempts");
+
+            if (iter >= maxIterations)
+                Debug.LogWarning($"[Board] Initial matches not fully resolved after {maxIterations} iterations");
+            else if (iter > 0)
+                Debug.Log($"[Board] Initial matches resolved in {iter} iteration(s)");
         }
+
+        /// <summary>
+        /// (x,y) 위치에 놓아도 가로/세로 3-매치를 만들지 않는 타일 타입 선택.
+        /// 6개 타입 × 시도 4회 안에 거의 항상 비매치 후보를 찾을 수 있음 (확률적으로).
+        /// </summary>
+        private TileType PickNonMatchingType(int x, int y)
+        {
+            const int numTypes = 6;
+            for (int attempt = 0; attempt < numTypes * 4; attempt++)
+            {
+                TileType candidate = (TileType)Random.Range(0, numTypes);
+                if (!WouldCauseMatchAt(x, y, candidate)) return candidate;
+            }
+            return GetRandomTileType();
+        }
+
+        /// <summary>
+        /// (x,y)에 type을 놓으면 가로/세로 3-매치(또는 그 일부)가 생기는지 검사.
+        /// 좌2/우2/좌1우1, 위2/아래2/위1아래1 패턴 6가지를 모두 본다.
+        /// </summary>
+        private bool WouldCauseMatchAt(int x, int y, TileType type)
+        {
+            // 가로 좌측 2칸
+            if (x >= 2 && SameType(board[y, x - 1], type) && SameType(board[y, x - 2], type)) return true;
+            // 가로 우측 2칸
+            if (x <= BOARD_SIZE - 3 && SameType(board[y, x + 1], type) && SameType(board[y, x + 2], type)) return true;
+            // 가로 좌1 + 우1 (가운데)
+            if (x >= 1 && x <= BOARD_SIZE - 2 && SameType(board[y, x - 1], type) && SameType(board[y, x + 1], type)) return true;
+            // 세로 위쪽 2칸
+            if (y >= 2 && SameType(board[y - 1, x], type) && SameType(board[y - 2, x], type)) return true;
+            // 세로 아래쪽 2칸
+            if (y <= BOARD_SIZE - 3 && SameType(board[y + 1, x], type) && SameType(board[y + 2, x], type)) return true;
+            // 세로 위1 + 아래1 (가운데)
+            if (y >= 1 && y <= BOARD_SIZE - 2 && SameType(board[y - 1, x], type) && SameType(board[y + 1, x], type)) return true;
+            return false;
+        }
+
+        private static bool SameType(TileData t, TileType type) => t != null && t.type == type;
 
         // 레거시 별 계산: 이동 횟수 비율
         private int CalculateStarsLegacy()

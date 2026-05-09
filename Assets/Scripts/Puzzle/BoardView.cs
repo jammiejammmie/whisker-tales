@@ -101,8 +101,11 @@ namespace WhiskerTales.Puzzle
 
             if (adjacent)
             {
-                bool ok = board.TrySwapTiles(selectedView.x, selectedView.y, clicked.x, clicked.y);
-                selectedView.SetSelected(false);
+                int sx = selectedView.x, sy = selectedView.y;
+                bool ok = board.TrySwapTiles(sx, sy, clicked.x, clicked.y);
+                // selectedView could have been destroyed by RefreshAll / re-spawn pipeline below;
+                // null-check before SetSelected to guard against rare race after TrySwapTiles.
+                if (selectedView != null) selectedView.SetSelected(false);
                 selectedView = null;
                 RefreshAll();
 
@@ -113,9 +116,9 @@ namespace WhiskerTales.Puzzle
             }
             else
             {
-                selectedView.SetSelected(false);
+                if (selectedView != null) selectedView.SetSelected(false);
                 selectedView = clicked;
-                clicked.SetSelected(true);
+                if (clicked != null) clicked.SetSelected(true);
             }
         }
 
