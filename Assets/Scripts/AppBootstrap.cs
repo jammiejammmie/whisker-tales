@@ -64,11 +64,13 @@ namespace WhiskerTales.Bootstrap
         private PhotoStudioController photoStudioController;
         private RectTransform settingsPanel;
         private SettingsScreen settingsScreen;
+        private TutorialOverlay tutorialOverlay;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
         public PhotoStudioController PhotoStudio => photoStudioController;
         public SettingsScreen Settings => settingsScreen;
+        public TutorialOverlay Tutorial => tutorialOverlay;
 
         public DetoxMessageModal DetoxModal => detoxModal;
         public SleepModeScreen SleepScreen => sleepModeScreen;
@@ -97,6 +99,7 @@ namespace WhiskerTales.Bootstrap
             loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
             sleepModeScreen = BuildSleepModeScreen(rootCanvas.transform);
+            tutorialOverlay = BuildTutorialOverlay(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
@@ -1369,6 +1372,56 @@ namespace WhiskerTales.Bootstrap
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
             }
+        }
+
+        // ===== Phase C: Tutorial Overlay =====
+
+        private TutorialOverlay BuildTutorialOverlay(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "TutorialOverlay");
+            panel.gameObject.SetActive(false);
+
+            // Dim backdrop
+            Image bg = panel.GetComponent<Image>();
+            bg.color = new Color(0, 0, 0, 0.55f);
+            bg.raycastTarget = true;
+
+            // Finger hand (paw icon) — animated pulse, anchored at canvas center for free placement
+            RectTransform finger = MakeRT(panel, "FingerHand",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(140, 140));
+            Image fingerImg = finger.gameObject.AddComponent<Image>();
+            fingerImg.sprite = spriteLib.iconPaw;
+            fingerImg.preserveAspect = true;
+            fingerImg.color = new Color(1f, 0.95f, 0.7f, 0.95f);
+            fingerImg.raycastTarget = false;
+
+            // Hint card (bottom)
+            RectTransform card = MakeRT(panel, "HintCard",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 280), new Vector2(880, 380));
+            Image cardBg = card.gameObject.AddComponent<Image>();
+            cardBg.sprite = TileView.GetWhiteSprite();
+            cardBg.color = new Color(0.96f, 0.945f, 0.91f, 1f);
+            cardBg.raycastTarget = true;
+
+            TextMeshProUGUI hint = CreateText(card, "HintText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 50, "");
+            ((RectTransform)hint.transform).offsetMin = new Vector2(40, 130);
+            ((RectTransform)hint.transform).offsetMax = new Vector2(-40, -40);
+            hint.color = new Color(0.20f, 0.18f, 0.15f);
+            hint.fontStyle = FontStyles.Bold;
+            hint.raycastTarget = false;
+
+            Button confirmBtn = CreateButton(card, "ConfirmButton",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 60), new Vector2(420, 110),
+                "확인", new Color(0.95f, 0.55f, 0.30f, 1f));
+
+            TutorialOverlay tut = panel.gameObject.AddComponent<TutorialOverlay>();
+            InjectField(tut, "root", panel.gameObject);
+            InjectField(tut, "hintText", hint);
+            InjectField(tut, "fingerHand", finger);
+            InjectField(tut, "confirmButton", confirmBtn);
+            return tut;
         }
 
         // ===== Phase B-3/B-4: Settings (§3-5) =====

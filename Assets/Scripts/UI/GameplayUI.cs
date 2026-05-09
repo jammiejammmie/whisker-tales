@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using WhiskerTales.Bootstrap;
 using WhiskerTales.Core;
 using WhiskerTales.Puzzle;
 using WhiskerTales.Utilities;
@@ -68,6 +69,23 @@ namespace WhiskerTales.UI
             SubscribeToEvents();
             ApplyBackground();
             ApplyDetoxCopy();
+            TryShowTutorial();
+        }
+
+        private void OnEnable()
+        {
+            // Start만으로는 패널이 다시 활성화될 때 튜토리얼 트리거가 안 걸려서 OnEnable에서도 호출.
+            // PlayerPrefs gate로 중복 노출 방지됨.
+            TryShowTutorial();
+        }
+
+        private void TryShowTutorial()
+        {
+            if (gameManager == null) return;
+            int level = gameManager.UserProgress?.currentLevel ?? 1;
+            AppBootstrap boot = AppBootstrap.Instance;
+            if (boot == null || boot.Tutorial == null) return;
+            boot.Tutorial.TryShowForLevel(level);
         }
 
         private void InitializeUI()
