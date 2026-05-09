@@ -1,4 +1,4 @@
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -6,10 +6,8 @@ using TMPro;
 namespace WhiskerTales.Puzzle
 {
     /// <summary>
-    /// Board의 8x8 TileData를 화면에 표시하고 입력을 처리하는 컨트롤러.
-    /// 입력 모델: 누름(OnTilePressed) → 드래그 → 손 뗌(OnTileReleased) → 카디널 방향으로 스왑.
-    /// 드래그 거리가 타일 크기 30% 미만이면 오터치 방지로 무시.
-    /// 시각 복귀: 스왑 성공 시 즉시 스냅 + RefreshAll, 실패/취소 시 ease-out 애니메이션으로 원위치.
+    /// Board의 8x8 TileData를 화면에 표시하고 입력을 처리하는 컨트롤러
+    /// 첫 클릭 → 선택, 두 번째 인접 클릭 → Board.TrySwapTiles 호출
     /// </summary>
     public class BoardView : MonoBehaviour
     {
@@ -19,9 +17,6 @@ namespace WhiskerTales.Puzzle
         public TextMeshProUGUI goalText;
         public TextMeshProUGUI movesText;
         public TextMeshProUGUI statusText;
-
-        // 드래그 거리 임계값 (타일 크기 대비 비율). 이 값 미만이면 오터치로 간주.
-        public const float DRAG_THRESHOLD_RATIO = 0.3f;
 
         private const int GRID_SIZE = 8;
         private TileView[,] views = new TileView[GRID_SIZE, GRID_SIZE];
@@ -79,98 +74,51 @@ namespace WhiskerTales.Puzzle
             }
         }
 
-        // ===== 입력 콜백 (TileView가 호출) =====
-
-        public void OnTilePressed(TileView pressed)
+        public void OnTileClicked(TileView clicked)
         {
-            if (board == null || pressed == null) return;
+            if (board == null || clicked == null) return;
             if (board.IsLevelComplete()) return;
             if (levelGoal != null && levelGoal.IsMovesExceeded()) return;
 
-            if (selectedView != null && selectedView != pressed)
+            if (selectedView == null)
             {
-                selectedView.SetSelected(false);
+                selectedView = clicked;
+                clicked.SetSelected(true);
+                UpdateStatus("");
+                return;
             }
-            selectedView = pressed;
-            pressed.SetSelected(true);
-            UpdateStatus("");
-        }
 
-        /// <summary>
-        /// 드래그 종료 시 호출. dragDelta는 화면 픽셀 단위(시작점 기준 변위).
-        /// 임계값 통과 시 카디널 방향 인접 타일과 스왑 시도.
-        /// 결과에 따라 released 타일의 시각 위치를 즉시 또는 애니메이션으로 복귀.
-        /// </summary>
-        public void OnTileReleased(TileView released, Vector2 dragDelta)
-        {
-            if (board == null || released == null) return;
-            // selectedView 정합성 — Pressed→Released 정상 흐름이면 같지만, 재진입 가드만.
-            if (selectedView != released)
+            if (selectedView == clicked)
             {
+                clicked.SetSelected(false);
+                selectedView = null;
+                return;
+            }
+
+            int dx = Mathf.Abs(selectedView.x - clicked.x);
+            int dy = Mathf.Abs(selectedView.y - clicked.y);
+            bool adjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
+
+            if (adjacent)
+            {
+                int sx = selectedView.x, sy = selectedView.y;
+                bool ok = board.TrySwapTiles(sx, sy, clicked.x, clicked.y);
+                // selectedView could have been destroyed by RefreshAll / re-spawn pipeline below;
+                // null-check before SetSelected to guard against rare race after TrySwapTiles.
                 if (selectedView != null) selectedView.SetSelected(false);
                 selectedView = null;
-            }
-
-            // 임계값: 타일 크기 × 비율
-            RectTransform rt = released.transform as RectTransform;
-            float tileSize = (rt != null) ? Mathf.Min(rt.rect.width, rt.rect.height) : 100f;
-            if (tileSize <= 0f) tileSize = 100f;
-            float threshold = tileSize * DRAG_THRESHOLD_RATIO;
-
-            if (dragDelta.magnitude < threshold)
-            {
-                // 오터치 방지 — 선택 해제 + 부드럽게 원위치 복귀
-                released.SetSelected(false);
-                selectedView = null;
-                released.SnapBackToOrigin(animate: true);
-                return;
-            }
-
-            // 카디널 방향 결정 — 더 큰 축이 우세
-            int dx = 0, dy = 0;
-            if (Mathf.Abs(dragDelta.x) > Mathf.Abs(dragDelta.y))
-                dx = (dragDelta.x > 0f) ? 1 : -1;
-            else
-                dy = (dragDelta.y > 0f) ? -1 : 1;
-            // 주의: UI Y축은 위로 +지만 grid Y축은 아래로 +. dragDelta.y > 0(화면 위 방향)이
-            // grid dy = -1 이 되도록 부호 반전.
-
-            int targetX = released.x + dx;
-            int targetY = released.y + dy;
-
-            // 보드 밖이면 스왑 거부 + 원위치 복귀
-            if (targetX < 0 || targetX >= GRID_SIZE || targetY < 0 || targetY >= GRID_SIZE)
-            {
-                released.SetSelected(false);
-                selectedView = null;
-                released.SnapBackToOrigin(animate: true);
-                UpdateStatus("");
-                return;
-            }
-
-            // 스왑 시도
-            int sx = released.x, sy = released.y;
-            bool ok = board.TrySwapTiles(sx, sy, targetX, targetY);
-            released.SetSelected(false);
-            selectedView = null;
-
-            if (ok)
-            {
-                // 성공 — 즉시 제자리(둘 다) + RefreshAll로 새 sprite 페인트.
-                released.SnapBackToOrigin(animate: false);
-                TileView targetView = (views != null && targetY >= 0 && targetY < GRID_SIZE
-                                                    && targetX >= 0 && targetX < GRID_SIZE)
-                    ? views[targetY, targetX] : null;
-                if (targetView != null) targetView.SnapBackToOrigin(animate: false);
                 RefreshAll();
-                UpdateStatus("");
+
+                if (!ok)
+                    UpdateStatus("매치 없음 — 스왑 취소");
+                else
+                    UpdateStatus("");
             }
             else
             {
-                // 매치 없음 — 원위치 복귀 애니메이션
-                released.SnapBackToOrigin(animate: true);
-                RefreshAll();
-                UpdateStatus("매치 없음 — 스왑 취소");
+                if (selectedView != null) selectedView.SetSelected(false);
+                selectedView = clicked;
+                if (clicked != null) clicked.SetSelected(true);
             }
         }
 
