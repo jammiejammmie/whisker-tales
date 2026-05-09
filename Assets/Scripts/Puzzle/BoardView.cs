@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -9,7 +8,8 @@ namespace WhiskerTales.Puzzle
     /// <summary>
     /// Board의 8x8 TileData를 화면에 표시하고 입력을 처리하는 컨트롤러.
     /// 입력 모델: 누름(OnTilePressed) → 드래그 → 손 뗌(OnTileReleased) → 카디널 방향으로 스왑.
-    /// 드래그 거리가 타일 크기 30% 미만이면 오터치 방지로 무시. 보드 밖/매치 불가면 bounce 애니메이션.
+    /// 드래그 거리가 타일 크기 30% 미만이면 오터치 방지로 무시.
+    /// 시각 복귀: 스왑 성공 시 즉시 스냅 + RefreshAll, 실패/취소 시 ease-out 애니메이션으로 원위치.
     /// </summary>
     public class BoardView : MonoBehaviour
     {
@@ -22,10 +22,6 @@ namespace WhiskerTales.Puzzle
 
         // 드래그 거리 임계값 (타일 크기 대비 비율). 이 값 미만이면 오터치로 간주.
         public const float DRAG_THRESHOLD_RATIO = 0.3f;
-
-        // Bounce 애니메이션 길이/거리.
-        public const float BOUNCE_DURATION = 0.18f;
-        public const float BOUNCE_DISTANCE = 18f;
 
         private const int GRID_SIZE = 8;
         private TileView[,] views = new TileView[GRID_SIZE, GRID_SIZE];
@@ -103,6 +99,7 @@ namespace WhiskerTales.Puzzle
         /// <summary>
         /// 드래그 종료 시 호출. dragDelta는 화면 픽셀 단위(시작점 기준 변위).
         /// 임계값 통과 시 카디널 방향 인접 타일과 스왑 시도.
+        /// 결과에 따라 released 타일의 시각 위치를 즉시 또는 애니메이션으로 복귀.
         /// </summary>
         public void OnTileReleased(TileView released, Vector2 dragDelta)
         {
@@ -122,9 +119,10 @@ namespace WhiskerTales.Puzzle
 
             if (dragDelta.magnitude < threshold)
             {
-                // 오터치 방지 — 선택만 해제하고 끝
+                // 오터치 방지 — 선택 해제 + 부드럽게 원위치 복귀
                 released.SetSelected(false);
                 selectedView = null;
+                released.SnapBackToOrigin(animate: true);
                 return;
             }
 
@@ -134,18 +132,18 @@ namespace WhiskerTales.Puzzle
                 dx = (dragDelta.x > 0f) ? 1 : -1;
             else
                 dy = (dragDelta.y > 0f) ? -1 : 1;
-            // 주의: UI Y축은 위로 +지만 grid Y축은 아래로 +. 보드의 (x, y) 좌표계에 맞추기 위해
-            // 화면 위쪽 드래그(dragDelta.y > 0)가 grid Y -1(=위쪽 행)이 되도록 부호 반전.
+            // 주의: UI Y축은 위로 +지만 grid Y축은 아래로 +. dragDelta.y > 0(화면 위 방향)이
+            // grid dy = -1 이 되도록 부호 반전.
 
             int targetX = released.x + dx;
             int targetY = released.y + dy;
 
-            // 보드 밖이면 bounce
+            // 보드 밖이면 스왑 거부 + 원위치 복귀
             if (targetX < 0 || targetX >= GRID_SIZE || targetY < 0 || targetY >= GRID_SIZE)
             {
-                if (Application.isPlaying) StartCoroutine(BounceAnimation(released, dx, -dy));
                 released.SetSelected(false);
                 selectedView = null;
+                released.SnapBackToOrigin(animate: true);
                 UpdateStatus("");
                 return;
             }
@@ -155,17 +153,24 @@ namespace WhiskerTales.Puzzle
             bool ok = board.TrySwapTiles(sx, sy, targetX, targetY);
             released.SetSelected(false);
             selectedView = null;
-            RefreshAll();
 
-            if (!ok)
+            if (ok)
             {
-                // RefreshAll 후에도 released는 같은 위치(스왑 실패 → 보드 변동 없음). bounce 가능.
-                if (Application.isPlaying) StartCoroutine(BounceAnimation(released, dx, -dy));
-                UpdateStatus("매치 없음 — 스왑 취소");
+                // 성공 — 즉시 제자리(둘 다) + RefreshAll로 새 sprite 페인트.
+                released.SnapBackToOrigin(animate: false);
+                TileView targetView = (views != null && targetY >= 0 && targetY < GRID_SIZE
+                                                    && targetX >= 0 && targetX < GRID_SIZE)
+                    ? views[targetY, targetX] : null;
+                if (targetView != null) targetView.SnapBackToOrigin(animate: false);
+                RefreshAll();
+                UpdateStatus("");
             }
             else
             {
-                UpdateStatus("");
+                // 매치 없음 — 원위치 복귀 애니메이션
+                released.SnapBackToOrigin(animate: true);
+                RefreshAll();
+                UpdateStatus("매치 없음 — 스왑 취소");
             }
         }
 
@@ -217,31 +222,6 @@ namespace WhiskerTales.Puzzle
         private void UpdateStatus(string msg)
         {
             if (statusText != null) statusText.text = msg;
-        }
-
-        /// <summary>
-        /// 스왑 불가 시 살짝 튕기는 애니메이션 — UI 좌표계(위로 +)에 맞춰 dx/dyUI를 받음.
-        /// </summary>
-        private IEnumerator BounceAnimation(TileView tile, int dx, int dyUI)
-        {
-            if (tile == null) yield break;
-            RectTransform rt = tile.transform as RectTransform;
-            if (rt == null) yield break;
-
-            Vector2 origin = rt.anchoredPosition;
-            Vector2 bounceOffset = new Vector2(dx * BOUNCE_DISTANCE, dyUI * BOUNCE_DISTANCE);
-
-            float t = 0f;
-            while (t < BOUNCE_DURATION)
-            {
-                t += Time.deltaTime;
-                float p = Mathf.Clamp01(t / BOUNCE_DURATION);
-                // 사인 곡선 한 번 — 0 → 1 → 0
-                float curve = Mathf.Sin(p * Mathf.PI);
-                if (rt != null) rt.anchoredPosition = origin + bounceOffset * curve;
-                yield return null;
-            }
-            if (rt != null) rt.anchoredPosition = origin;
         }
     }
 }

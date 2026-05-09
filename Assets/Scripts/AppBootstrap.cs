@@ -67,6 +67,8 @@ namespace WhiskerTales.Bootstrap
         private RectTransform diagnosticsPanel;
         private DiagnosticsScreen diagnosticsScreen;
         private IdleRewardModal idleRewardModal;
+        // Gameplay 배경 — 매 레벨 진입 시 zone/stage에 맞춰 동적 갱신.
+        private Image gameplayBackgroundImage;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
@@ -418,12 +420,14 @@ namespace WhiskerTales.Bootstrap
             // their private SerializeFields. ShowPanel will activate when navigated to.
             panel.gameObject.SetActive(false);
 
-            // top background image (decorative — also used by GameplayUI.backgroundImage)
+            // top background image — layout은 기존 유지(상단 영역). ShowPanel(Gameplay) 시 currentLevel로 zone/stage 갱신.
             Image bgImage = CreateImageObject(panel, "BackgroundImage",
                 new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -560), new Vector2(0, 1100));
             bgImage.color = Color.white;
+            // 초기값: zone1 stage1. ShowPanel(Gameplay) 진입 때 RefreshGameplayBackgroundForLevel가 갱신.
             Sprite zone1 = spriteLib.GetBackground(1, 1);
             if (zone1 != null) bgImage.sprite = zone1; else bgImage.color = new Color(0.18f, 0.22f, 0.30f, 1f);
+            gameplayBackgroundImage = bgImage;
 
             // §7-1 detox copy under top bar — 한지 크림 60% 알파 배경 + 차콜 텍스트 + 폰트 16sp 상향
             RectTransform detoxBackdrop = MakeRT(panel, "DetoxBackdrop",
@@ -1386,6 +1390,39 @@ namespace WhiskerTales.Bootstrap
             foreach (var kv in panels)
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
+            }
+
+            // Gameplay 진입 시 currentLevel에 맞춘 zone/stage 배경으로 갱신.
+            if (target == NavigationTarget.Gameplay)
+            {
+                int level = (GameManager.Instance != null && GameManager.Instance.UserProgress != null)
+                    ? GameManager.Instance.UserProgress.currentLevel : 1;
+                RefreshGameplayBackgroundForLevel(level);
+            }
+        }
+
+        /// <summary>
+        /// 50 레벨 → 15 stage(zone 1~3 × stage 1~5) 매핑. (level - 1) × 15 / TOTAL_LEVELS 로 stageIdx 계산.
+        /// 스토리 순서: zone1=입구 마당(시작) → zone2=카페 본채(중반) → zone3=뒷마당(마지막).
+        /// </summary>
+        public void RefreshGameplayBackgroundForLevel(int level)
+        {
+            if (gameplayBackgroundImage == null) return;
+            int total = Mathf.Max(1, Constants.TOTAL_LEVELS);
+            int stageIdx = Mathf.Clamp(((level - 1) * 15) / total, 0, 14);
+            int zone = (stageIdx / 5) + 1;
+            int stage = (stageIdx % 5) + 1;
+
+            Sprite sp = spriteLib.GetBackground(zone, stage);
+            if (sp != null)
+            {
+                gameplayBackgroundImage.sprite = sp;
+                gameplayBackgroundImage.color = Color.white;
+                Debug.Log($"[AppBootstrap] Gameplay bg → zone{zone}_stage{stage} (level {level})");
+            }
+            else
+            {
+                Debug.LogWarning($"[AppBootstrap] Gameplay bg sprite missing: zone{zone}_stage{stage}");
             }
         }
 
