@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using WhiskerTales.Bootstrap;
 using WhiskerTales.Cat;
 using WhiskerTales.Core;
 using WhiskerTales.Utilities;
@@ -240,8 +241,12 @@ namespace WhiskerTales.UI
         private void HandleCameraClicked()
         {
             AudioManager.instance?.PlayButtonClick();
-            // TODO §4-8 포토 스튜디오 / 공유 시트 통합
-            Debug.Log($"[CatBondScreen] Camera button (TODO: photo studio for cat {currentCatId})");
+            // §3-4 Photo Studio 진입 — 현재 선택된 고양이를 컨텍스트로 전달
+            if (AppBootstrap.Instance != null && AppBootstrap.Instance.PhotoStudio != null)
+            {
+                AppBootstrap.Instance.PhotoStudio.SetCat(currentCatId);
+            }
+            GameManager.Instance?.RequestNavigation(NavigationTarget.PhotoStudio);
         }
 
         private void HandleHelpClicked()

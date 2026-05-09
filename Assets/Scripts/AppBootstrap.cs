@@ -54,8 +54,12 @@ namespace WhiskerTales.Bootstrap
         private SleepModeScreen sleepModeScreen;
         private RectTransform meditationPanel;
         private MeditationGardenController meditationController;
+        private RectTransform photoStudioPanel;
+        private PhotoStudioController photoStudioController;
         private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
+
+        public PhotoStudioController PhotoStudio => photoStudioController;
 
         public DetoxMessageModal DetoxModal => detoxModal;
         public SleepModeScreen SleepScreen => sleepModeScreen;
@@ -78,6 +82,7 @@ namespace WhiskerTales.Bootstrap
             cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
             arcadePanel     = BuildArcadePanel(rootCanvas.transform);
             meditationPanel = BuildMeditationGardenPanel(rootCanvas.transform);
+            photoStudioPanel = BuildPhotoStudioPanel(rootCanvas.transform);
             openingPanel    = BuildOpeningPanel(rootCanvas.transform);
             loadingScreen   = BuildLoadingScreen(rootCanvas.transform);
             detoxModal      = BuildDetoxMessageModal(rootCanvas.transform);
@@ -91,6 +96,7 @@ namespace WhiskerTales.Bootstrap
                 { NavigationTarget.Cafe,             cafePanel },
                 { NavigationTarget.Arcade,           arcadePanel },
                 { NavigationTarget.MeditationGarden, meditationPanel },
+                { NavigationTarget.PhotoStudio,      photoStudioPanel },
             };
 
             if (GameManager.Instance != null)
@@ -1320,6 +1326,136 @@ namespace WhiskerTales.Bootstrap
             }
         }
 
+        // ===== Phase B-3: Photo Studio (§3-4) =====
+
+        private RectTransform BuildPhotoStudioPanel(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "PhotoStudioPanel");
+            panel.gameObject.SetActive(false);
+
+            // Top bar
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            TextMeshProUGUI title = CreateText(panel, "Title",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -100), new Vector2(700, 100),
+                TextAlignmentOptions.Center, 60, "포토 스튜디오");
+            title.color = new Color(0.30f, 0.20f, 0.12f);
+            title.fontStyle = FontStyles.Bold;
+
+            // Preview area: bg full coverage in upper region, cat sprite centered
+            Image bgImg = CreateImageObject(panel, "PreviewBackground",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -700), new Vector2(960, 1100));
+            bgImg.preserveAspect = false;
+            bgImg.raycastTarget = false;
+
+            Image catImg = CreateImageObject(panel, "PreviewCat",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -750), new Vector2(720, 900));
+            catImg.preserveAspect = true;
+            catImg.raycastTarget = false;
+
+            // 5 background thumbnails row (above the pose row)
+            // 5종 — 한옥 실내 / 마당 / 뒷정원 / 벚꽃(임시) / 눈(임시)
+            (string label, int zone, int stage)[] bgChoices = new (string, int, int)[]
+            {
+                ("실내",  2, 5),
+                ("마당",  1, 5),
+                ("뒷정원", 3, 5),
+                ("벚꽃",  1, 3), // 임시 — 정식 벚꽃 배경은 v1.1
+                ("눈",    3, 1), // 임시 — 정식 눈 배경은 v1.1
+            };
+
+            var bgOptions = new PhotoStudioController.BackgroundOption[bgChoices.Length];
+            int totalW = bgChoices.Length * 130 + (bgChoices.Length - 1) * 16;
+            int rowStartX = -totalW / 2 + 65;
+            for (int i = 0; i < bgChoices.Length; i++)
+            {
+                int posX = rowStartX + i * (130 + 16);
+                Sprite sp = spriteLib.GetBackground(bgChoices[i].zone, bgChoices[i].stage);
+
+                Button thumb = CreateButton(panel, $"BgThumb_{i}",
+                    new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(posX, 480), new Vector2(130, 100),
+                    "", new Color(1f, 1f, 1f, 1f));
+                Image thumbImg = thumb.GetComponent<Image>();
+                if (sp != null) { thumbImg.sprite = sp; thumbImg.color = Color.white; }
+                else            { thumbImg.color = new Color(0.55f, 0.55f, 0.55f); }
+                Outline ol = thumb.gameObject.AddComponent<Outline>();
+                ol.effectColor = new Color(0.20f, 0.18f, 0.15f);
+                ol.effectDistance = new Vector2(2, -2);
+                // remove the auto-created button label
+                Transform labelChild = thumb.transform.Find("Label");
+                if (labelChild != null) UnityEngine.Object.DestroyImmediate(labelChild.gameObject);
+
+                TextMeshProUGUI subLabel = CreateText(panel, $"BgLabel_{i}",
+                    new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(posX, 410), new Vector2(140, 36),
+                    TextAlignmentOptions.Center, 28, bgChoices[i].label);
+                subLabel.color = new Color(0.20f, 0.18f, 0.15f);
+                subLabel.raycastTarget = false;
+
+                bgOptions[i] = new PhotoStudioController.BackgroundOption
+                {
+                    label = bgChoices[i].label,
+                    sprite = sp,
+                    thumbnailButton = thumb,
+                };
+            }
+
+            // Pose toggle row
+            Button frontBtn = CreateButton(panel, "PoseFront",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-150, 320), new Vector2(280, 90),
+                "정면", new Color(0.91f, 0.659f, 0.486f, 1f));
+            Button playBtn = CreateButton(panel, "PosePlay",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(150, 320), new Vector2(280, 90),
+                "놀아주기", new Color(0.483f, 0.722f, 0.553f, 1f));
+
+            // Action row (capture + share) — captured during photo so we can hide it
+            RectTransform actionRow = MakeRT(panel, "ActionRow",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 150), new Vector2(900, 130));
+            Button captureBtn = CreateButton(actionRow, "CaptureButton",
+                new Vector2(0, 0), new Vector2(0.5f, 1), Vector2.zero, Vector2.zero,
+                "📸 찍기", new Color(0.95f, 0.55f, 0.30f, 1f));
+            ((RectTransform)captureBtn.transform).offsetMin = new Vector2(0, 0);
+            ((RectTransform)captureBtn.transform).offsetMax = new Vector2(-20, 0);
+
+            Button shareBtn = CreateButton(actionRow, "ShareButton",
+                new Vector2(0.5f, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                "📤 공유", new Color(0.40f, 0.62f, 0.95f, 1f));
+            ((RectTransform)shareBtn.transform).offsetMin = new Vector2(20, 0);
+            ((RectTransform)shareBtn.transform).offsetMax = new Vector2(0, 0);
+
+            // Build front/play sprite arrays indexed by catId (1..5)
+            Sprite[] frontArr = new Sprite[6];
+            Sprite[] playArr  = new Sprite[6];
+            int[] catIds = { Constants.CAT_NABI, Constants.CAT_BELLA, Constants.CAT_SAMI, Constants.CAT_HODU, Constants.CAT_GUREUMI };
+            foreach (int id in catIds)
+            {
+                if (id < frontArr.Length)
+                {
+                    frontArr[id] = spriteLib.GetCatPortrait(id);
+                    playArr[id]  = spriteLib.GetCatPlayPortrait(id);
+                }
+            }
+
+            // Attach script + inject
+            PhotoStudioController ctrl = panel.gameObject.AddComponent<PhotoStudioController>();
+            InjectField(ctrl, "backButton", backBtn);
+            InjectField(ctrl, "titleText", title);
+            InjectField(ctrl, "backgroundImage", bgImg);
+            InjectField(ctrl, "catImage", catImg);
+            InjectField(ctrl, "backgroundOptions", bgOptions);
+            InjectField(ctrl, "poseFrontButton", frontBtn);
+            InjectField(ctrl, "posePlayButton", playBtn);
+            InjectField(ctrl, "captureButton", captureBtn);
+            InjectField(ctrl, "shareButton", shareBtn);
+            InjectField(ctrl, "actionRow", actionRow);
+            InjectField(ctrl, "frontSpritesByCatId", frontArr);
+            InjectField(ctrl, "playSpritesByCatId", playArr);
+
+            photoStudioController = ctrl;
+            return panel;
+        }
+
         // ===== Phase B-3: Meditation Garden (§3-2) =====
 
         private RectTransform BuildMeditationGardenPanel(Transform parent)
@@ -1833,6 +1969,7 @@ namespace WhiskerTales.Bootstrap
     {
         public Sprite[,] backgroundsByZoneStage; // [zoneIdx 0..2, stageIdx 0..4]
         public Dictionary<int, Sprite> catPortraits = new Dictionary<int, Sprite>();
+        public Dictionary<int, Sprite> catPlayPortraits = new Dictionary<int, Sprite>();
         public Sprite[] tiles;                    // indexed by TileType enum
         public Sprite starFilled;
         public Sprite starEmpty;
@@ -1855,7 +1992,8 @@ namespace WhiskerTales.Bootstrap
                 (Constants.CAT_GUREUMI, "gureumi"),
             })
             {
-                catPortraits[kv.id] = LoadSpriteAt($"Assets/Sprites/Characters/cat_{kv.name}.png");
+                catPortraits[kv.id]     = LoadSpriteAt($"Assets/Sprites/Characters/cat_{kv.name}.png");
+                catPlayPortraits[kv.id] = LoadSpriteAt($"Assets/Sprites/Characters/cat_{kv.name}_play.png");
             }
 
             tiles = new Sprite[6];
@@ -1886,6 +2024,11 @@ namespace WhiskerTales.Bootstrap
         public Sprite GetCatPortrait(int catId)
         {
             return catPortraits.TryGetValue(catId, out Sprite sp) ? sp : null;
+        }
+
+        public Sprite GetCatPlayPortrait(int catId)
+        {
+            return catPlayPortraits.TryGetValue(catId, out Sprite sp) ? sp : null;
         }
 
         /// <summary>
