@@ -56,7 +56,7 @@ namespace WhiskerTales.Bootstrap
             titlePanel    = BuildTitlePanel(rootCanvas.transform);
             gameplayPanel = BuildGameplayPanel(rootCanvas.transform);
             catRoomPanel  = BuildCatRoomPanel(rootCanvas.transform);
-            cafePanel     = BuildPlaceholderPanel(rootCanvas.transform, "Cafe (TODO)");
+            cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
@@ -102,6 +102,11 @@ namespace WhiskerTales.Bootstrap
             {
                 cafe = managers.AddComponent<CafeRestorationManager>();
                 InjectField(cafe, "zoneBackgrounds", spriteLib.BuildZoneBackgrounds(typeof(CafeRestorationManager)));
+
+                // Inject CafeRestorationData.json (kept at Assets/_Data/Cafe/, no file moves)
+                // before its Start() runs.
+                CafeRestorationManager.CafeRestorationData data = LoadCafeRestorationData();
+                if (data != null) cafe.InjectCafeData(data);
             }
 
             if (FindObjectOfType<AudioManager>() == null)
@@ -575,6 +580,234 @@ namespace WhiskerTales.Bootstrap
             InjectField(cb, "hintText", hint);
 
             return panel;
+        }
+
+        // ===== CAFE RESTORATION (§4-4) =====
+
+        private static CafeRestorationManager.CafeRestorationData LoadCafeRestorationData()
+        {
+#if UNITY_EDITOR
+            const string path = "Assets/_Data/Cafe/CafeRestorationData.json";
+            TextAsset asset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
+            if (asset != null)
+            {
+                return JsonUtility.FromJson<CafeRestorationManager.CafeRestorationData>(asset.text);
+            }
+            Debug.LogWarning($"[AppBootstrap] {path} not found. Cafe screen will be empty.");
+            return null;
+#else
+            // Runtime build: would need StreamingAssets/Resources/Addressables.
+            return null;
+#endif
+        }
+
+        private RectTransform BuildCafeRestorationPanel(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "CafePanel");
+            panel.gameObject.SetActive(false);
+
+            Image bg = panel.GetComponent<Image>();
+            Sprite bgSprite = spriteLib.GetBackground(1, 1);
+            if (bgSprite != null) { bg.sprite = bgSprite; bg.color = new Color(1f, 1f, 1f, 0.6f); }
+
+            // Top bar
+            Button backBtn = CreateButton(panel, "BackButton",
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(80, -80), new Vector2(120, 120),
+                "<", new Color(0.20f, 0.20f, 0.25f, 0.85f));
+
+            TextMeshProUGUI title = CreateText(panel, "Title",
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -100), new Vector2(700, 100),
+                TextAlignmentOptions.Center, 60, "Cafe Restoration");
+
+            TextMeshProUGUI totalStars = CreateText(panel, "TotalStars",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(280, 80),
+                TextAlignmentOptions.Right, 50, "⭐ 0");
+            totalStars.color = new Color(1f, 0.85f, 0.40f);
+
+            // ScrollRect for the 15-card list
+            ScrollRect scroll = BuildScrollRect(panel,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, 60), new Vector2(900, 1080));
+            RectTransform content = scroll.content;
+
+            // Build 15 cards
+            var data = LoadCafeRestorationData();
+            int totalStages = 0;
+            if (data != null && data.cafeAreas != null)
+                foreach (var a in data.cafeAreas) if (a.stages != null) totalStages += a.stages.Count;
+            if (totalStages == 0) totalStages = 15; // fallback
+
+            var cards = new CafeRestorationScreen.CardWidget[totalStages];
+            int cardIdx = 0;
+            if (data != null && data.cafeAreas != null)
+            {
+                for (int z = 0; z < data.cafeAreas.Count; z++)
+                {
+                    var area = data.cafeAreas[z];
+                    if (area.stages == null) continue;
+                    for (int s = 0; s < area.stages.Count; s++)
+                    {
+                        cards[cardIdx] = BuildCafeCard(content, z + 1, s + 1, area.stages[s]);
+                        cardIdx++;
+                    }
+                }
+            }
+
+            // Bottom: 3 zone progress rows
+            RectTransform zoneRow = MakeRT(panel, "ZoneProgressRow",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 120), new Vector2(900, 200));
+
+            var zoneBars = new Image[3];
+            var zoneTexts = new TextMeshProUGUI[3];
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 70 - i * 60;
+                TextMeshProUGUI label = CreateText(zoneRow, $"ZoneLabel{i+1}",
+                    new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(20, y), new Vector2(220, 50),
+                    TextAlignmentOptions.Left, 32, $"{i+1}구역 0/5");
+                zoneTexts[i] = label;
+
+                RectTransform barContainer = MakeRT(zoneRow, $"ZoneBarBg{i+1}",
+                    new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0, y),  new Vector2(-280, 28));
+                barContainer.anchoredPosition = new Vector2(140, y);
+                Image barBg = barContainer.gameObject.AddComponent<Image>();
+                barBg.sprite = TileView.GetWhiteSprite();
+                barBg.color = new Color(0, 0, 0, 0.5f);
+
+                Image barFill = CreateImageObject(barContainer, "Fill",
+                    new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero);
+                RectTransform fillRT = (RectTransform)barFill.transform;
+                fillRT.offsetMin = new Vector2(4, 4); fillRT.offsetMax = new Vector2(-4, -4);
+                barFill.type = Image.Type.Filled;
+                barFill.fillMethod = Image.FillMethod.Horizontal;
+                barFill.fillAmount = 0f;
+                barFill.color = new Color(0.95f, 0.65f, 0.30f);
+                zoneBars[i] = barFill;
+            }
+
+            // Completion burst overlay (re-parented to a card on success)
+            RectTransform burstRoot = MakeRT(panel, "CompletionBurst",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(160, 160));
+            TextMeshProUGUI burstText = CreateText(burstRoot, "BurstText",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero,
+                TextAlignmentOptions.Center, 110, "✓");
+            burstText.color = new Color(0.95f, 0.85f, 0.30f);
+            burstRoot.gameObject.SetActive(false);
+
+            // Attach script + inject
+            CafeRestorationScreen screen = panel.gameObject.AddComponent<CafeRestorationScreen>();
+            InjectField(screen, "backButton", backBtn);
+            InjectField(screen, "titleText", title);
+            InjectField(screen, "totalStarsText", totalStars);
+            InjectField(screen, "backgroundImage", bg);
+            InjectField(screen, "cards", cards);
+            InjectField(screen, "zoneProgressBars", zoneBars);
+            InjectField(screen, "zoneProgressTexts", zoneTexts);
+            InjectField(screen, "completionBurstRoot", burstRoot);
+            InjectField(screen, "completionBurstText", burstText);
+
+            return panel;
+        }
+
+        private CafeRestorationScreen.CardWidget BuildCafeCard(
+            Transform parent, int areaId, int stageIdx,
+            CafeRestorationManager.RestorationStage stage)
+        {
+            // Each card sits in a VerticalLayoutGroup container — width follows parent, height fixed.
+            GameObject go = new GameObject($"Card_z{areaId}_s{stageIdx}",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+            RectTransform rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+
+            LayoutElement le = go.GetComponent<LayoutElement>();
+            le.minHeight = 140;
+            le.preferredHeight = 140;
+            le.flexibleWidth = 1f;
+
+            Image bg = go.GetComponent<Image>();
+            bg.sprite = TileView.GetWhiteSprite();
+            bg.color = new Color(0.85f, 0.85f, 0.88f, 0.95f);
+
+            TextMeshProUGUI desc = CreateText(rt, "Desc",
+                new Vector2(0, 1), new Vector2(0.6f, 1), new Vector2(0, -10), new Vector2(0, 60),
+                TextAlignmentOptions.Left, 38, $"[{areaId}-{stageIdx}] {stage?.description ?? ""}");
+            ((RectTransform)desc.transform).offsetMin = new Vector2(24, -70);
+            ((RectTransform)desc.transform).offsetMax = new Vector2(-12, -10);
+            desc.color = new Color(0.15f, 0.15f, 0.20f);
+
+            TextMeshProUGUI starsText = CreateText(rt, "Stars",
+                new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(0, 10), new Vector2(0, 60),
+                TextAlignmentOptions.Left, 36, $"⭐ {stage?.starsRequired ?? 0}");
+            ((RectTransform)starsText.transform).offsetMin = new Vector2(24, 12);
+            ((RectTransform)starsText.transform).offsetMax = new Vector2(-12, 70);
+            starsText.color = new Color(0.85f, 0.55f, 0.20f);
+
+            TextMeshProUGUI stateLabel = CreateText(rt, "State",
+                new Vector2(0.5f, 0), new Vector2(0.7f, 0), new Vector2(0, 10), new Vector2(0, 60),
+                TextAlignmentOptions.Center, 32, "");
+            ((RectTransform)stateLabel.transform).offsetMin = new Vector2(8, 12);
+            ((RectTransform)stateLabel.transform).offsetMax = new Vector2(-8, 70);
+            stateLabel.color = new Color(0.20f, 0.20f, 0.25f);
+
+            Button restoreBtn = CreateButton(rt, "RestoreButton",
+                new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-130, 0), new Vector2(220, 100),
+                "복원하기", new Color(0.95f, 0.55f, 0.30f, 1f));
+
+            return new CafeRestorationScreen.CardWidget
+            {
+                areaId = areaId,
+                stageIdx = stageIdx,
+                root = rt,
+                background = bg,
+                descText = desc,
+                starsText = starsText,
+                stateLabel = stateLabel,
+                restoreButton = restoreBtn,
+            };
+        }
+
+        private ScrollRect BuildScrollRect(Transform parent,
+            Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPos, Vector2 sizeDelta)
+        {
+            RectTransform rt = MakeRT(parent, "Scroll", anchorMin, anchorMax, anchoredPos, sizeDelta);
+            Image scrollBg = rt.gameObject.AddComponent<Image>();
+            scrollBg.sprite = TileView.GetWhiteSprite();
+            scrollBg.color = new Color(0, 0, 0, 0.35f);
+            scrollBg.raycastTarget = true;
+
+            ScrollRect scroll = rt.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+
+            // Viewport (mask)
+            RectTransform viewport = MakeRT(rt, "Viewport",
+                new Vector2(0, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero);
+            viewport.offsetMin = new Vector2(8, 8); viewport.offsetMax = new Vector2(-8, -8);
+            Image vpImg = viewport.gameObject.AddComponent<Image>();
+            vpImg.sprite = TileView.GetWhiteSprite();
+            vpImg.color = new Color(0, 0, 0, 0.001f);
+            viewport.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+
+            // Content
+            RectTransform content = MakeRT(viewport, "Content",
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 0), new Vector2(0, 0));
+            content.pivot = new Vector2(0.5f, 1f);
+            VerticalLayoutGroup vlg = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(12, 12, 12, 12);
+            vlg.spacing = 12;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = false;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            ContentSizeFitter csf = content.gameObject.AddComponent<ContentSizeFitter>();
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            scroll.viewport = viewport;
+            scroll.content = content;
+            return scroll;
         }
 
         // ===== Placeholder panel =====

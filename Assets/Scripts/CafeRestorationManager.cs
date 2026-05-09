@@ -67,6 +67,17 @@ public class CafeRestorationManager : MonoBehaviour
     public delegate void OnStageCompleted(int areaId, int stage);
     public event OnStageCompleted StageCompletedEvent;
 
+    /// <summary>
+    /// 수동 복원으로 한 stage가 완료될 때 발행. (areaId/stage는 1-based)
+    /// </summary>
+    public delegate void StageRestoredManualHandler(int areaId, int stage);
+    public event StageRestoredManualHandler OnStageRestoredManual;
+
+    // §4-4 수동 별 소비 모델: PlayerPrefs로 진행도 영구 저장
+    private const string PREF_STAGES_COMPLETED = "Cafe.StagesCompleted";
+    private int stagesCompleted;        // 0..15 (zone1.s1..zone3.s5 누적 완료 수)
+    private bool dataInjected;          // AppBootstrap이 InjectCafeData로 주입했는지
+
     public int CurrentAreaId => currentAreaId;
     public int CurrentStage => currentStage;
     public string CurrentBackgroundKey => $"bg_zone{currentAreaId}_stage{currentStage}";
@@ -85,9 +96,21 @@ public class CafeRestorationManager : MonoBehaviour
 
     private void Start()
     {
-        LoadCafeData();
+        if (!dataInjected) LoadCafeData();
         LoadBackgroundSprites();
+        stagesCompleted = PlayerPrefs.GetInt(PREF_STAGES_COMPLETED, 0);
+        SyncPointerToStagesCompleted();
         UpdateUI();
+    }
+
+    /// <summary>
+    /// AppBootstrap 등에서 JSON을 직접 파싱해 주입. Resources.Load 우회.
+    /// Start() 이전에 호출되어야 함 (즉, AddComponent 직후).
+    /// </summary>
+    public void InjectCafeData(CafeRestorationData data)
+    {
+        cafeData = data;
+        dataInjected = true;
     }
 
     /// <summary>
@@ -145,15 +168,13 @@ public class CafeRestorationManager : MonoBehaviour
     public Sprite GetCurrentBackground() => GetBackground(currentAreaId, currentStage);
 
     /// <summary>
-    /// 퍼즐 클리어 시 호출 (GameController에서 호출)
+    /// 퍼즐 클리어 시 호출. §4-4 수동 별 소비 모델로 전환된 후로는 자동 완료 안 함 —
+    /// 별은 GameManager.UserProgress.stars에 누적되고, 유저가 카페 화면 [복원하기] 버튼으로 소비.
+    /// 메서드 자체는 LevelClearPanel 호환을 위해 유지.
     /// </summary>
     public void OnPuzzleClear(int starsEarned)
     {
-        currentStars += starsEarned;
-        Debug.Log($"별 획득: +{starsEarned} (현재: {currentStars})");
-
-        UpdateUI();
-        CheckStageCompletion();
+        Debug.Log($"[CafeRestoration] Puzzle cleared (+{starsEarned} stars). Manual restoration via Cafe screen.");
     }
 
     /// <summary>
@@ -354,6 +375,159 @@ public class CafeRestorationManager : MonoBehaviour
 
         return (float)currentStars / currentStageData.starsRequired;
     }
+
+    // ===== §4-4 Manual Spend API =====
+
+    /// <summary>
+    /// 다음 복원 대상 stage를 별로 결제하여 완료. WhiskerTales.Core.GameManager.SpendStars 사용.
+    /// 성공: stagesCompleted++, OnStageRestoredManual 발행, 배경 페이드 전환.
+    /// 실패: 별 부족 또는 모든 stage 완료 시 false.
+    /// </summary>
+    public bool TryRestoreCurrentStage(WhiskerTales.Core.GameManager gm)
+    {
+        if (gm == null || cafeData == null) return false;
+        if (stagesCompleted >= GetTotalStages()) return false;
+
+        RestorationStage cur = GetCurrentStageData();
+        if (cur == null) return false;
+
+        if (!gm.SpendStars(cur.starsRequired))
+        {
+            Debug.LogWarning($"[CafeRestoration] Not enough stars: need {cur.starsRequired}, have {gm.UserProgress.stars}");
+            return false;
+        }
+
+        int completedAreaId = currentAreaId;
+        int completedStage = currentStage;
+
+        stagesCompleted++;
+        PlayerPrefs.SetInt(PREF_STAGES_COMPLETED, stagesCompleted);
+        PlayerPrefs.Save();
+
+        SyncPointerToStagesCompleted();
+
+        OnStageRestoredManual?.Invoke(completedAreaId, completedStage);
+        StageCompletedEvent?.Invoke(completedAreaId, completedStage);
+
+        // 배경 전환 (Inspector-bound cafeBackgroundImage가 있으면 페이드)
+        Sprite newBg = GetBackground(completedAreaId, completedStage);
+        if (newBg != null && cafeBackgroundImage != null)
+        {
+            StartCoroutine(FadeBackgroundImage(newBg));
+        }
+
+        Debug.Log($"[CafeRestoration] Restored zone{completedAreaId} stage{completedStage} (-{cur.starsRequired} stars)");
+        return true;
+    }
+
+    public int GetStagesCompleted() => stagesCompleted;
+
+    public int GetTotalStages()
+    {
+        if (cafeData == null) return 0;
+        int n = 0;
+        foreach (var a in cafeData.cafeAreas) n += a.stages.Count;
+        return n;
+    }
+
+    public int GetZoneStageCount(int areaIdx1Based)
+    {
+        if (cafeData == null) return 0;
+        int z = areaIdx1Based - 1;
+        if (z < 0 || z >= cafeData.cafeAreas.Count) return 0;
+        return cafeData.cafeAreas[z].stages.Count;
+    }
+
+    public int GetZoneStagesCompleted(int areaIdx1Based)
+    {
+        if (cafeData == null) return 0;
+        int z = areaIdx1Based - 1;
+        if (z < 0 || z >= cafeData.cafeAreas.Count) return 0;
+        int before = 0;
+        for (int i = 0; i < z; i++) before += cafeData.cafeAreas[i].stages.Count;
+        int zoneTotal = cafeData.cafeAreas[z].stages.Count;
+        return Mathf.Clamp(stagesCompleted - before, 0, zoneTotal);
+    }
+
+    public int GetZoneCount() => cafeData?.cafeAreas?.Count ?? 0;
+
+    public string GetAreaName(int areaIdx1Based)
+    {
+        if (cafeData == null) return "";
+        int z = areaIdx1Based - 1;
+        if (z < 0 || z >= cafeData.cafeAreas.Count) return "";
+        return cafeData.cafeAreas[z].areaName;
+    }
+
+    public RestorationStage GetStageData(int areaIdx1Based, int stageIdx1Based)
+    {
+        if (cafeData == null) return null;
+        int z = areaIdx1Based - 1, s = stageIdx1Based - 1;
+        if (z < 0 || z >= cafeData.cafeAreas.Count) return null;
+        var area = cafeData.cafeAreas[z];
+        if (s < 0 || s >= area.stages.Count) return null;
+        return area.stages[s];
+    }
+
+    public RestorationStage GetCurrentStageData()
+    {
+        if (cafeData == null || stagesCompleted >= GetTotalStages()) return null;
+        return GetStageData(currentAreaId, currentStage);
+    }
+
+    public bool IsStageCompleted(int areaIdx1Based, int stageIdx1Based)
+    {
+        int flat = ToFlatIndex(areaIdx1Based, stageIdx1Based);
+        return flat >= 0 && flat < stagesCompleted;
+    }
+
+    public bool IsStageCurrent(int areaIdx1Based, int stageIdx1Based)
+    {
+        int flat = ToFlatIndex(areaIdx1Based, stageIdx1Based);
+        return flat == stagesCompleted;
+    }
+
+    private int ToFlatIndex(int areaIdx1Based, int stageIdx1Based)
+    {
+        if (cafeData == null) return -1;
+        int z = areaIdx1Based - 1, s = stageIdx1Based - 1;
+        if (z < 0 || z >= cafeData.cafeAreas.Count) return -1;
+        var area = cafeData.cafeAreas[z];
+        if (s < 0 || s >= area.stages.Count) return -1;
+        int flat = 0;
+        for (int i = 0; i < z; i++) flat += cafeData.cafeAreas[i].stages.Count;
+        return flat + s;
+    }
+
+    /// <summary>
+    /// stagesCompleted 카운트 → currentAreaId/currentStage 1-based 포인터 동기화.
+    /// 모든 stage 완료 시 마지막 zone의 마지막 stage로 고정.
+    /// </summary>
+    private void SyncPointerToStagesCompleted()
+    {
+        if (cafeData == null || cafeData.cafeAreas.Count == 0) return;
+
+        int rem = stagesCompleted;
+        int zoneIdx = 0;
+        while (zoneIdx < cafeData.cafeAreas.Count && rem >= cafeData.cafeAreas[zoneIdx].stages.Count)
+        {
+            rem -= cafeData.cafeAreas[zoneIdx].stages.Count;
+            zoneIdx++;
+        }
+
+        if (zoneIdx >= cafeData.cafeAreas.Count)
+        {
+            currentAreaId = cafeData.cafeAreas.Count;
+            currentStage = cafeData.cafeAreas[currentAreaId - 1].stages.Count;
+        }
+        else
+        {
+            currentAreaId = zoneIdx + 1;
+            currentStage = rem + 1;
+        }
+    }
+
+    // ===== legacy =====
 
     /// <summary>
     /// 현재 상태 정보 반환
