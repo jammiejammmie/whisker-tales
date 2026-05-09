@@ -5,8 +5,10 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
+using WhiskerTales.Audio;
 using WhiskerTales.Cat;
 using WhiskerTales.Core;
+using WhiskerTales.Currency;
 using WhiskerTales.Puzzle;
 using WhiskerTales.UI;
 using WhiskerTales.Utilities;
@@ -43,6 +45,8 @@ namespace WhiskerTales.Bootstrap
         private RectTransform arcadePanel;
         private RectTransform openingPanel;
         private OpeningScenario openingScenario;
+        private LoadingScreen loadingScreen;
+        private TextMeshProUGUI titleNyangiHeartText;
         private Dictionary<NavigationTarget, RectTransform> panels;
 
         private void Awake()
@@ -62,6 +66,7 @@ namespace WhiskerTales.Bootstrap
             cafePanel     = BuildCafeRestorationPanel(rootCanvas.transform);
             arcadePanel   = BuildArcadePanel(rootCanvas.transform);
             openingPanel  = BuildOpeningPanel(rootCanvas.transform);
+            loadingScreen = BuildLoadingScreen(rootCanvas.transform);
 
             panels = new Dictionary<NavigationTarget, RectTransform>
             {
@@ -88,6 +93,8 @@ namespace WhiskerTales.Bootstrap
         {
             if (GameManager.Instance != null)
                 GameManager.Instance.OnNavigationRequested -= ShowPanel;
+            if (CurrencyManager.Instance != null)
+                CurrencyManager.Instance.OnNyangiHeartChanged -= HandleNyangiHeartChanged;
         }
 
         // ===== managers / event system =====
@@ -126,6 +133,16 @@ namespace WhiskerTales.Bootstrap
                 managers.AddComponent<I18nManager>();
             if (FindObjectOfType<IdleRewardSystem>() == null)
                 managers.AddComponent<IdleRewardSystem>();
+
+            if (SoundManager.Instance == null)
+            {
+                managers.AddComponent<SoundManager>();
+                RegisterSoundManagerClips();
+            }
+            if (CurrencyManager.Instance == null)
+            {
+                managers.AddComponent<CurrencyManager>();
+            }
 
             if (I18nManager.Instance != null)
                 I18nManager.Instance.SetLanguage(Application.systemLanguage);
@@ -249,6 +266,13 @@ namespace WhiskerTales.Bootstrap
             Image bg = panel.GetComponent<Image>();
             Sprite bgSprite = spriteLib.GetBackground(1, 1);
             if (bgSprite != null) { bg.sprite = bgSprite; bg.color = Color.white; }
+
+            // 💝 Nyangi-heart indicator (top-right). Subscribes to CurrencyManager events.
+            titleNyangiHeartText = CreateText(panel, "NyangiHeartText",
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-200, -100), new Vector2(320, 80),
+                TextAlignmentOptions.Right, 48, "💝 0");
+            titleNyangiHeartText.color = new Color(0.95f, 0.40f, 0.55f);
+            BindNyangiHeartIndicator();
 
             CreateText(panel, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(0, -200), new Vector2(900, 220), TextAlignmentOptions.Center, 110, "Whisker Tales");
@@ -1239,6 +1263,111 @@ namespace WhiskerTales.Bootstrap
             {
                 if (kv.Value != null) kv.Value.gameObject.SetActive(kv.Key == target);
             }
+        }
+
+        // ===== Phase B-1: Sound / Loading / Currency =====
+
+        /// <summary>
+        /// §4-3 매핑대로 SoundManager에 cat 클립을 등록.
+        /// 일반 모드 클립은 v1.0에서 자리만 (null 등록 안 함, Play시 dict 미스로 자연스럽게 무음).
+        /// 에디터 전용 AssetDatabase 로드 — APK 빌드는 후속 (Resources/StreamingAssets 정리 필요).
+        /// </summary>
+        private static void RegisterSoundManagerClips()
+        {
+            SoundManager sm = SoundManager.Instance;
+            if (sm == null) return;
+
+#if UNITY_EDITOR
+            AudioClip nabi    = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_nabi.wav");
+            AudioClip hodu    = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_hodu.wav");
+            AudioClip bella   = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_bella.wav");
+            AudioClip sami    = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_sami.wav");
+            AudioClip gureumi = LoadAudioClipAt("Assets/Audio/Cats/cat_meow_gureumi.wav");
+            AudioClip purring = LoadAudioClipAt("Assets/Audio/Cats/cat_purring.wav");
+
+            sm.RegisterCatClip(SfxKey.Click,      nabi);     // 짧은 "냥"
+            sm.RegisterCatClip(SfxKey.Match,      hodu);     // "뿅" 톤
+            sm.RegisterCatClip(SfxKey.Combo,      bella);    // 흥분한 "냐~!"
+            sm.RegisterCatClip(SfxKey.LevelClear, sami);     // 길고 기쁜 "므야아~"
+            sm.RegisterCatClip(SfxKey.Coin,       bella);    // 방울 톤 (벨라 목방울)
+            sm.RegisterCatClip(SfxKey.Fail,       gureumi);  // 작고 실망한 "음냥..."
+            sm.RegisterCatClip(SfxKey.Pet,        purring);  // 골골송
+
+            int registered = 0;
+            foreach (var c in new[] { nabi, hodu, bella, sami, gureumi, purring }) if (c != null) registered++;
+            Debug.Log($"[AppBootstrap] SoundManager cat clips registered: {registered}/6");
+#else
+            Debug.LogWarning("[AppBootstrap] SoundManager cat clips: editor-only loader — APK build needs StreamingAssets/Resources.");
+#endif
+        }
+
+        private RectTransform BuildLoadingScreen(Transform parent)
+        {
+            RectTransform panel = NewPanel(parent, "LoadingScreenOverlay");
+            panel.gameObject.SetActive(false);
+            Image bg = panel.GetComponent<Image>();
+            bg.color = new Color(0.96f, 0.945f, 0.91f, 0.95f); // 한지 크림 95% — almost solid
+
+            // Rotating cat face (Image) at center
+            Image catFace = CreateImageObject(panel, "CatFace",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, 80), new Vector2(280, 280));
+            catFace.preserveAspect = true;
+            catFace.raycastTarget = false;
+
+            // Message text below
+            TextMeshProUGUI msg = CreateText(panel, "Message",
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, -160), new Vector2(900, 100),
+                TextAlignmentOptions.Center, 44, "냥이가 준비 중이에요...");
+            msg.color = new Color(0.30f, 0.20f, 0.12f);
+            msg.raycastTarget = false;
+
+            // Purring AudioSource (loop)
+            AudioSource purring = panel.gameObject.AddComponent<AudioSource>();
+            purring.playOnAwake = false;
+            purring.loop = true;
+            purring.spatialBlend = 0f;
+#if UNITY_EDITOR
+            purring.clip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Cats/cat_purring.wav");
+#endif
+
+            // Loading entries — 5 cats, messages from §5-3
+            var entries = new LoadingScreen.CatLoadingEntry[]
+            {
+                new LoadingScreen.CatLoadingEntry { catId = Constants.CAT_BELLA,   face = spriteLib.GetCatPortrait(Constants.CAT_BELLA),   messageKo = "우아하게 준비 중이에요~ 🎀", messageEn = "Preparing elegantly~" },
+                new LoadingScreen.CatLoadingEntry { catId = Constants.CAT_NABI,    face = spriteLib.GetCatPortrait(Constants.CAT_NABI),    messageKo = "신나게 달려오고 있어요! 🍀", messageEn = "Running over excitedly!" },
+                new LoadingScreen.CatLoadingEntry { catId = Constants.CAT_HODU,    face = spriteLib.GetCatPortrait(Constants.CAT_HODU),    messageKo = "든든하게 준비했습니다 🧣", messageEn = "Got it covered." },
+                new LoadingScreen.CatLoadingEntry { catId = Constants.CAT_GUREUMI, face = spriteLib.GetCatPortrait(Constants.CAT_GUREUMI), messageKo = "살금살금 오고 있어요... 💙", messageEn = "Sneaking quietly..." },
+                new LoadingScreen.CatLoadingEntry { catId = Constants.CAT_SAMI,    face = spriteLib.GetCatPortrait(Constants.CAT_SAMI),    messageKo = "조용히 기다려주세요 🔔", messageEn = "Please wait quietly." },
+            };
+
+            LoadingScreen ls = panel.gameObject.AddComponent<LoadingScreen>();
+            InjectField(ls, "catFaceImage", catFace);
+            InjectField(ls, "messageText", msg);
+            InjectField(ls, "purringSource", purring);
+            InjectField(ls, "entries", entries);
+
+            return panel;
+        }
+
+        private void BindNyangiHeartIndicator()
+        {
+            if (titleNyangiHeartText == null) return;
+            // CurrencyManager may already be created (EnsureCoreManagers ran first); subscribe + sync.
+            CurrencyManager cm = CurrencyManager.Instance;
+            if (cm != null)
+            {
+                titleNyangiHeartText.text = $"💝 {cm.NyangiHeart}";
+                cm.OnNyangiHeartChanged -= HandleNyangiHeartChanged;
+                cm.OnNyangiHeartChanged += HandleNyangiHeartChanged;
+            }
+        }
+
+        private void HandleNyangiHeartChanged(int newValue)
+        {
+            if (titleNyangiHeartText != null)
+                titleNyangiHeartText.text = $"💝 {newValue}";
         }
 
         // ===== widget helpers =====
