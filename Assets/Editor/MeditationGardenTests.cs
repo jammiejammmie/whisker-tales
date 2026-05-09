@@ -22,6 +22,9 @@ namespace WhiskerTales.EditorTests
             try
             {
                 CurrencyManager cm = mgrGo.AddComponent<CurrencyManager>();
+                // Edit 모드는 Awake가 자동으로 안 불리므로 명시 초기화 (싱글톤 + PlayerPrefs 로드)
+                cm.EnsureInitialized();
+
                 MeditationGardenController ctrl = ctrlGo.AddComponent<MeditationGardenController>();
 
                 // 클린 시작

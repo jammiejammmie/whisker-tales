@@ -36,8 +36,16 @@ namespace WhiskerTales.Currency
                 Destroy(gameObject);
                 return;
             }
-            Instance = this;
+            EnsureInitialized();
+        }
 
+        /// <summary>
+        /// 싱글톤 + PlayerPrefs 로드를 강제로 실행. Edit 모드(Awake 자동 호출 X)의 테스트나
+        /// 명시적 재초기화가 필요한 경우 호출. 일반 런타임 Awake가 위임 호출함.
+        /// </summary>
+        public void EnsureInitialized()
+        {
+            Instance = this;
             nyangiHeart = PlayerPrefs.GetInt(PREF_NYANGI_HEART, 0);
             dailyGained = PlayerPrefs.GetInt(PREF_DAILY_GAINED, 0);
             dailyDate   = PlayerPrefs.GetString(PREF_DAILY_DATE, Today());
