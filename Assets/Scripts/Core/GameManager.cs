@@ -1,9 +1,24 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using WhiskerTales.Utilities;
 
 namespace WhiskerTales.Core
 {
+    /// <summary>
+    /// 단일 씬 + 패널 전환 구조에서 화면 식별자.
+    /// BottomNav가 발행하는 SwitchTo 이벤트와 GameManager.RequestNavigation을 통해 사용.
+    /// </summary>
+    public enum NavigationTarget
+    {
+        Title,      // 메인/타이틀 화면 (Home 탭)
+        Shop,
+        CatRoom,
+        Gallery,
+        Friends,
+        Cafe,       // 카페 운영 모드
+        Gameplay,   // 매치-3 보드
+        Settings
+    }
+
     /// <summary>
     /// 게임 전체 상태 및 생명주기 관리
     /// 싱글톤 패턴 사용
@@ -29,6 +44,9 @@ namespace WhiskerTales.Core
 
         public delegate void LevelFailHandler(int levelId);
         public event LevelFailHandler OnLevelFail;
+
+        public delegate void NavigationRequestedHandler(NavigationTarget target);
+        public event NavigationRequestedHandler OnNavigationRequested;
 
         private void Awake()
         {
@@ -154,25 +172,33 @@ namespace WhiskerTales.Core
         }
 
         /// <summary>
-        /// 메인 메뉴로 돌아가기
+        /// 메인/타이틀 화면으로 복귀 (단일 씬 패널 전환).
         /// </summary>
         public void ReturnToMenu()
         {
             Time.timeScale = 1f;
             SetGameState(GameState.MainMenu);
             SaveGame();
-            SceneManager.LoadScene("MainMenu");
+            RequestNavigation(NavigationTarget.Title);
             Debug.Log("[GameManager] Returned to main menu");
         }
 
         /// <summary>
-        /// 카페 화면으로 이동
+        /// 카페 화면으로 이동 (단일 씬 패널 전환).
         /// </summary>
         public void GoToCafe()
         {
             SetGameState(GameState.Cafe);
-            SceneManager.LoadScene("Cafe");
+            RequestNavigation(NavigationTarget.Cafe);
             Debug.Log("[GameManager] Navigated to cafe");
+        }
+
+        /// <summary>
+        /// 화면 전환 요청. 구독자(BottomNav 등)가 패널 활성화/비활성화 처리.
+        /// </summary>
+        public void RequestNavigation(NavigationTarget target)
+        {
+            OnNavigationRequested?.Invoke(target);
         }
 
         /// <summary>

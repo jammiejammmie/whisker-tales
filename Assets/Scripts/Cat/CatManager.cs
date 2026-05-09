@@ -87,16 +87,32 @@ namespace WhiskerTales.Cat
                 favoriteActivity = favoriteActivity,
                 affinityLevel = 0,
                 affinityPoints = 0,
-                portraitPath = $"Sprites/Cats/cat_{catId}",
+                portraitPath = $"cat_{GetCatNameId(catId)}",
                 animationPaths = new List<string>
                 {
-                    $"Animations/Cat/cat_{catId}_walk",
-                    $"Animations/Cat/cat_{catId}_play",
-                    $"Animations/Cat/cat_{catId}_sleep"
+                    $"Animations/Cat/cat_{GetCatNameId(catId)}_walk",
+                    $"Animations/Cat/cat_{GetCatNameId(catId)}_play",
+                    $"Animations/Cat/cat_{GetCatNameId(catId)}_sleep"
                 }
             };
 
             cats[catId] = cat;
+        }
+
+        /// <summary>
+        /// catId → 신 이름 식별자 매핑 (인계 패킷 §6 기준).
+        /// </summary>
+        public static string GetCatNameId(int catId)
+        {
+            switch (catId)
+            {
+                case Constants.CAT_NABI:    return "nabi";
+                case Constants.CAT_BELLA:   return "bella";
+                case Constants.CAT_SAMI:    return "sami";
+                case Constants.CAT_HODU:    return "hodu";
+                case Constants.CAT_GUREUMI: return "gureumi";
+            }
+            return "unknown";
         }
 
         /// <summary>

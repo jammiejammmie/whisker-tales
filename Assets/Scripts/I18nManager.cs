@@ -44,7 +44,7 @@ public class I18nManager : MonoBehaviour
         // Korean translations
         translations["ko"] = new Dictionary<string, string>
         {
-            {"game_title", "냥이의 집"},
+            {"game_title", "위스커 테일즈"},
             {"play_button", "시작"},
             {"settings_button", "설정"},
             {"level_complete", "레벨 완료!"},

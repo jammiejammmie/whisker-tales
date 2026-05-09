@@ -15,12 +15,6 @@ namespace WhiskerTales.UI
     /// </summary>
     public class TitleUI : MonoBehaviour
     {
-        [Serializable]
-        public class ZoneBackgrounds
-        {
-            public Sprite[] stages = new Sprite[5];
-        }
-
         [Header("Top HUD")]
         [SerializeField] private TMP_Text livesText;
         [SerializeField] private TMP_Text livesTimerText;
@@ -34,14 +28,6 @@ namespace WhiskerTales.UI
         [SerializeField] private Image backgroundImage;
         [SerializeField] private TMP_Text logoText;
         [SerializeField] private TMP_Text dailyCopyText;
-
-        [Header("Backgrounds (zone1~3 × stage1~5)")]
-        [SerializeField] private ZoneBackgrounds[] zoneBackgrounds = new ZoneBackgrounds[3]
-        {
-            new ZoneBackgrounds(),
-            new ZoneBackgrounds(),
-            new ZoneBackgrounds(),
-        };
 
         [Header("Event Banner (top-right)")]
         [SerializeField] private GameObject eventBannerRoot;
@@ -159,24 +145,10 @@ namespace WhiskerTales.UI
         private void RefreshBackground()
         {
             if (backgroundImage == null) return;
+            if (CafeRestorationManager.instance == null) return;
 
-            int zoneIdx = 0;
-            int stageIdx = 0;
-            if (CafeRestorationManager.instance != null)
-            {
-                zoneIdx = Mathf.Clamp(CafeRestorationManager.instance.CurrentAreaId - 1, 0, zoneBackgrounds.Length - 1);
-                stageIdx = Mathf.Clamp(CafeRestorationManager.instance.CurrentStage - 1, 0, 4);
-            }
-
-            if (zoneBackgrounds == null || zoneIdx >= zoneBackgrounds.Length) return;
-            var zone = zoneBackgrounds[zoneIdx];
-            if (zone == null || zone.stages == null || stageIdx >= zone.stages.Length) return;
-
-            Sprite sprite = zone.stages[stageIdx];
-            if (sprite != null)
-            {
-                backgroundImage.sprite = sprite;
-            }
+            Sprite sp = CafeRestorationManager.instance.GetCurrentBackground();
+            if (sp != null) backgroundImage.sprite = sp;
         }
 
         private void RefreshEventCountdown()
@@ -212,8 +184,9 @@ namespace WhiskerTales.UI
         private void ApplyLogoText()
         {
             if (logoText == null) return;
-            bool ko = I18nManager.Instance != null && I18nManager.Instance.currentLanguage == SystemLanguage.Korean;
-            logoText.text = ko ? "위스커 테일즈" : "Whisker Tales";
+            logoText.text = I18nManager.Instance != null
+                ? I18nManager.Instance.GetLocalizedText("game_title")
+                : "Whisker Tales";
         }
 
         private IEnumerator BannerTickRoutine()

@@ -46,7 +46,21 @@ public class CafeRestorationManager : MonoBehaviour
     public Text starsRequiredText;
     public Image cafeBackgroundImage;
 
-    // 배경 이미지 맵
+    // 배경 이미지 (Inspector 직접 할당, zone × stage 5장씩)
+    [System.Serializable]
+    public class ZoneBackgrounds
+    {
+        public Sprite[] stages = new Sprite[5];
+    }
+
+    [SerializeField] private ZoneBackgrounds[] zoneBackgrounds = new ZoneBackgrounds[3]
+    {
+        new ZoneBackgrounds(),
+        new ZoneBackgrounds(),
+        new ZoneBackgrounds(),
+    };
+
+    // 키→스프라이트 룩업 (Inspector 배열에서 빌드)
     private Dictionary<string, Sprite> backgroundSprites = new Dictionary<string, Sprite>();
 
     // 이벤트
@@ -94,18 +108,41 @@ public class CafeRestorationManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 배경 이미지 리소스 로드
+    /// Inspector에서 할당된 zoneBackgrounds 배열을 키→Sprite 사전으로 인덱싱.
+    /// 키 형식: bg_zone{Z}_stage{S} (Z=1..3, S=1..5)
     /// </summary>
     private void LoadBackgroundSprites()
     {
-        // Resources/Backgrounds 폴더에서 모든 이미지 로드
-        Sprite[] sprites = Resources.LoadAll<Sprite>("Backgrounds");
-        foreach (Sprite sprite in sprites)
+        backgroundSprites.Clear();
+        if (zoneBackgrounds == null) return;
+
+        int loaded = 0;
+        for (int z = 0; z < zoneBackgrounds.Length; z++)
         {
-            backgroundSprites[sprite.name] = sprite;
+            var zone = zoneBackgrounds[z];
+            if (zone == null || zone.stages == null) continue;
+            for (int s = 0; s < zone.stages.Length; s++)
+            {
+                Sprite sp = zone.stages[s];
+                if (sp == null) continue;
+                string key = $"bg_zone{z + 1}_stage{s + 1}";
+                backgroundSprites[key] = sp;
+                loaded++;
+            }
         }
-        Debug.Log($"배경 이미지 {sprites.Length}개 로드 완료");
+        Debug.Log($"배경 이미지 {loaded}개 로드 완료 (Inspector 할당)");
     }
+
+    /// <summary>
+    /// 외부(TitleUI 등)에서 zone/stage 인덱스로 배경 Sprite 조회.
+    /// </summary>
+    public Sprite GetBackground(int zoneId1Based, int stage1Based)
+    {
+        string key = $"bg_zone{zoneId1Based}_stage{stage1Based}";
+        return backgroundSprites.TryGetValue(key, out Sprite sp) ? sp : null;
+    }
+
+    public Sprite GetCurrentBackground() => GetBackground(currentAreaId, currentStage);
 
     /// <summary>
     /// 퍼즐 클리어 시 호출 (GameController에서 호출)

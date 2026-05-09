@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using WhiskerTales.Core;
 
 namespace WhiskerTales.UI
 {
@@ -40,6 +41,10 @@ namespace WhiskerTales.UI
                 Tab captured = b.tab;
                 b.button.onClick.AddListener(() => SwitchTo(captured));
             }
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnNavigationRequested += HandleNavigationRequested;
+            }
         }
 
         private void OnDisable()
@@ -48,6 +53,23 @@ namespace WhiskerTales.UI
             {
                 if (b == null || b.button == null) continue;
                 b.button.onClick.RemoveAllListeners();
+            }
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.OnNavigationRequested -= HandleNavigationRequested;
+            }
+        }
+
+        private void HandleNavigationRequested(NavigationTarget target)
+        {
+            switch (target)
+            {
+                case NavigationTarget.Title:    SwitchTo(Tab.Home); break;
+                case NavigationTarget.Shop:     SwitchTo(Tab.Shop); break;
+                case NavigationTarget.CatRoom:  SwitchTo(Tab.CatRoom); break;
+                case NavigationTarget.Gallery:  SwitchTo(Tab.Gallery); break;
+                case NavigationTarget.Friends:  SwitchTo(Tab.Friends); break;
+                // Cafe/Gameplay/Settings는 BottomNav 외부 패널이므로 처리 안 함
             }
         }
 
