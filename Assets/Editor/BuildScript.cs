@@ -78,8 +78,11 @@ namespace WhiskerTales.EditorBuild
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, PACKAGE_NAME);
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
-            // 스크립팅 백엔드는 프로젝트 기본값 유지 (IL2CPP 강제 X — 첫 빌드 시 NDK 필요).
-            // Google Play 정식 출시 시 IL2CPP + ARM64 필요 — 이 빌드는 검수용 빠른 빌드.
+
+            // Google Play 출시 요건: IL2CPP + ARM64 (64-bit) 필수 (2019년 이후).
+            // 첫 IL2CPP 빌드는 Android NDK 컴파일로 5~15분 추가 소요. Library 캐시 따뜻해지면 짧아짐.
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
         }
 
         private static void EnsureOutputDir()
