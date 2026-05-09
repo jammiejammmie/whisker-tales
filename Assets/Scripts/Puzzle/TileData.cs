@@ -34,7 +34,7 @@
         /// <summary>특수 아이템 없음</summary>
         None = 0,
 
-        /// <summary>로켓 (한 줄 제거)</summary>
+        /// <summary>로켓 (한 줄 제거) — legacy. 새 코드는 RocketHorizontal/Vertical 사용.</summary>
         Rocket = 1,
 
         /// <summary>폭탄 (3x3 영역 제거)</summary>
@@ -44,7 +44,13 @@
         Rainbow = 3,
 
         /// <summary>망치 (임의의 칸 제거)</summary>
-        Hammer = 4
+        Hammer = 4,
+
+        /// <summary>가로 로켓 (행 전체 제거) — 4가로 매치로 생성</summary>
+        RocketHorizontal = 5,
+
+        /// <summary>세로 로켓 (열 전체 제거) — 4세로 매치로 생성</summary>
+        RocketVertical = 6
     }
 
     /// <summary>

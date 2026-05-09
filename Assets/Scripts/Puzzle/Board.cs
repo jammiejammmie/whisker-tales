@@ -128,35 +128,103 @@ namespace WhiskerTales.Puzzle
 
             SwapTiles(tileA, tileB);
 
+            // 특수 타일 스왑 감지 (스왑 후 매치 0이어도 특수 타일이 있으면 발화)
+            bool specialOnA = tileA.specialItem != SpecialItemType.None;
+            bool specialOnB = tileB.specialItem != SpecialItemType.None;
+
             List<List<TileData>> currentMatches = MatchLogic.FindAllMatches(board);
-            if (currentMatches.Count == 0)
+            bool hasInitialMatch = currentMatches.Count > 0;
+
+            if (!hasInitialMatch && !specialOnA && !specialOnB)
             {
-                // 매치 없음 → 스왑 취소
+                // 매치 없음 + 특수 아님 → 스왑 취소
                 SwapTiles(tileA, tileB);
                 Debug.Log("[Board] No match, swap cancelled");
                 return false;
             }
 
-            // 캐스케이드 루프: 매치 처리 → 중력 → 채우기 → 다시 검사. 새로 형성된 매치도 모두 소비.
+            HashSet<TileData> swapOrigins = new HashSet<TileData> { tileA, tileB };
             List<TileData> cumulativeRemoved = new List<TileData>();
-            int cascade = 0;
-            while (currentMatches.Count > 0 && cascade < MAX_CASCADE_ITERATIONS)
+            HashSet<TileData> pendingSwapActivation = new HashSet<TileData>();
+
+            // 특수-only 스왑: 매치 없는데 특수 타일 swap → 즉시 발화
+            if (!hasInitialMatch)
             {
-                foreach (List<TileData> matches in currentMatches)
+                if (specialOnA && specialOnB)
                 {
-                    OnMatchFound?.Invoke(matches);
+                    foreach (var t in SpecialItem.ActivateCombo(tileA, tileB, board)) pendingSwapActivation.Add(t);
+                    tileA.specialItem = SpecialItemType.None;
+                    tileB.specialItem = SpecialItemType.None;
+                }
+                else
+                {
+                    TileData spec = specialOnA ? tileA : tileB;
+                    TileData partner = specialOnA ? tileB : tileA;
+                    ActivateSpecial(spec, partner.type, pendingSwapActivation);
+                }
+            }
 
-                    SpecialItemType detected = MatchLogic.GetSpecialItemType(matches);
-                    if (detected != SpecialItemType.None)
-                        Debug.Log($"[Board] Special pattern detected (cascade {cascade}): {detected}");
+            int cascade = 0;
+            while ((currentMatches.Count > 0 || pendingSwapActivation.Count > 0) && cascade < MAX_CASCADE_ITERATIONS)
+            {
+                HashSet<TileData> removalSet = new HashSet<TileData>();
 
-                    cumulativeRemoved.AddRange(matches);
+                // 특수-only 스왑으로 들어온 제거 후보 흡수
+                foreach (var t in pendingSwapActivation) removalSet.Add(t);
+                pendingSwapActivation.Clear();
+
+                foreach (List<TileData> matchGroup in currentMatches)
+                {
+                    OnMatchFound?.Invoke(matchGroup);
+
+                    SpecialItemType produced = MatchLogic.GetSpecialItemType(matchGroup);
+                    TileData survivor = (produced != SpecialItemType.None)
+                        ? ChooseSurvivor(matchGroup, swapOrigins)
+                        : null;
+
+                    if (produced != SpecialItemType.None && survivor != null)
+                        Debug.Log($"[Board] Created {produced} at ({survivor.x},{survivor.y}) (cascade {cascade})");
+
+                    foreach (TileData tile in matchGroup)
+                    {
+                        if (tile == survivor) continue;
+
+                        // 매치로 제거되는 타일이 기존 특수 → 체인 발화
+                        if (tile.specialItem != SpecialItemType.None)
+                            ActivateSpecial(tile, tile.type, removalSet);
+
+                        removalSet.Add(tile);
+                    }
+
+                    if (survivor != null)
+                    {
+                        survivor.specialItem = produced;
+                        survivor.isMatched = false;
+                    }
                 }
 
-                RemoveMatches(currentMatches);
+                // removalSet 안에 아직 활성화 안 된 특수 (체인 결과로 추가된 것 등) 처리
+                ResolveChainedSpecials(removalSet);
+
+                // 보드에서 실제 제거
+                foreach (TileData t in removalSet)
+                {
+                    if (t == null) continue;
+                    if (t.x < 0 || t.x >= BOARD_SIZE || t.y < 0 || t.y >= BOARD_SIZE) continue;
+                    if (board[t.y, t.x] == t)
+                    {
+                        t.isMatched = true;
+                        board[t.y, t.x] = null;
+                    }
+                    cumulativeRemoved.Add(t);
+                }
+
                 ApplyGravity();
                 FillEmpty();
                 cascade++;
+
+                // 첫 iter 이후 swapOrigins 의미 없음 (캐스케이드 매치는 중앙 타일을 survivor로)
+                swapOrigins.Clear();
 
                 currentMatches = MatchLogic.FindAllMatches(board);
             }
@@ -321,6 +389,91 @@ namespace WhiskerTales.Puzzle
         {
             int randomIndex = Random.Range(0, 6);
             return (TileType)randomIndex;
+        }
+
+        /// <summary>
+        /// 매치 그룹에서 특수 아이템이 살아남을 위치 선택.
+        /// 스왑 origin이 매치에 포함되어 있으면 그것을, 아니면 매치 그룹의 중간 타일.
+        /// </summary>
+        private TileData ChooseSurvivor(List<TileData> matchGroup, HashSet<TileData> swapOrigins)
+        {
+            if (matchGroup == null || matchGroup.Count == 0) return null;
+            if (swapOrigins != null)
+            {
+                foreach (TileData t in matchGroup)
+                {
+                    if (swapOrigins.Contains(t)) return t;
+                }
+            }
+            return matchGroup[matchGroup.Count / 2];
+        }
+
+        /// <summary>
+        /// 특수 타일 발화. 발화 결과 제거 대상을 removalSet에 추가.
+        /// 체인 방지를 위해 발화한 타일의 specialItem은 즉시 None으로 마킹.
+        /// 발화 결과에 또 다른 특수 타일이 있으면 재귀적으로 발화 (체인 폭발).
+        /// </summary>
+        private void ActivateSpecial(TileData special, TileType partnerColor, HashSet<TileData> removalSet)
+        {
+            if (special == null) return;
+            SpecialItemType type = special.specialItem;
+            if (type == SpecialItemType.None) return;
+
+            // 체인 무한 루프 방지 — 즉시 소비 마킹
+            special.specialItem = SpecialItemType.None;
+
+            List<TileData> activated = null;
+            switch (type)
+            {
+                case SpecialItemType.RocketHorizontal:
+                    activated = SpecialItem.ActivateRocket(special, board, true);
+                    break;
+                case SpecialItemType.RocketVertical:
+                    activated = SpecialItem.ActivateRocket(special, board, false);
+                    break;
+                case SpecialItemType.Rocket:
+                    // legacy — 가로로 폴백
+                    activated = SpecialItem.ActivateRocket(special, board, true);
+                    break;
+                // Bomb / Rainbow → 후속 commit에서 추가
+                default:
+                    return;
+            }
+
+            if (activated == null) return;
+            foreach (TileData t in activated)
+            {
+                removalSet.Add(t);
+                if (t != null && t.specialItem != SpecialItemType.None && t != special)
+                {
+                    ActivateSpecial(t, t.type, removalSet);
+                }
+            }
+        }
+
+        /// <summary>
+        /// removalSet에 들어와 있지만 아직 활성화되지 않은 특수 타일 처리.
+        /// 특수-only 스왑 콤보 결과나 매치 처리 중 직접 추가된 케이스.
+        /// </summary>
+        private void ResolveChainedSpecials(HashSet<TileData> removalSet)
+        {
+            int safety = 0;
+            bool anyActivated = true;
+            while (anyActivated && safety < 50)
+            {
+                anyActivated = false;
+                List<TileData> toActivate = new List<TileData>();
+                foreach (TileData t in removalSet)
+                {
+                    if (t != null && t.specialItem != SpecialItemType.None) toActivate.Add(t);
+                }
+                foreach (TileData t in toActivate)
+                {
+                    ActivateSpecial(t, t.type, removalSet);
+                    anyActivated = true;
+                }
+                safety++;
+            }
         }
 
         /// <summary>
