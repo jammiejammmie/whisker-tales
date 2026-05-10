@@ -1,0 +1,14 @@
+{
+  "levels": [
+    { "id": 1, "moves": 18, "goalType": "RemoveBlocks", "target": 20, "tileTypes": 5, "obstacles": [] },
+    { "id": 2, "moves": 20, "goalType": "RemoveBlocks", "target": 28, "tileTypes": 5, "obstacles": [] },
+    { "id": 3, "moves": 22, "goalType": "CollectItems", "target": 12, "targetTileType": 1, "tileTypes": 5, "obstacles": [] },
+    { "id": 4, "moves": 21, "goalType": "ReachScore", "target": 4500, "tileTypes": 6, "obstacles": [] },
+    { "id": 5, "moves": 24, "goalType": "RemoveBlocks", "target": 42, "tileTypes": 6, "obstacles": ["DustPile"] },
+    { "id": 6, "moves": 24, "goalType": "CollectItems", "target": 18, "targetTileType": 2, "tileTypes": 6, "obstacles": ["DustPile"] },
+    { "id": 7, "moves": 25, "goalType": "DestroyObstacles", "target": 8, "tileTypes": 6, "obstacles": ["DustPile", "TeaCup"] },
+    { "id": 8, "moves": 26, "goalType": "ReachScore", "target": 8500, "tileTypes": 6, "obstacles": ["TeaCup"] },
+    { "id": 9, "moves": 27, "goalType": "ClearJelly", "target": 10, "tileTypes": 6, "obstacles": ["Jelly"] },
+    { "id": 10, "moves": 28, "goalType": "RemoveBlocks", "target": 65, "tileTypes": 6, "obstacles": ["DustPile", "Jelly"] }
+  ]
+}
