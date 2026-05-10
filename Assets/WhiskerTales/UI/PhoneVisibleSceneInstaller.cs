@@ -20,12 +20,18 @@ namespace WhiskerTales.UI
         [SerializeField] private GameplayUIScreenController gameplay;
         [SerializeField] private CatBondingScreenController catBonding;
         [SerializeField] private CafeRestorationScreenController cafeRestoration;
+        [SerializeField] private ArcadeScreenController arcade;
         [SerializeField] private MeditationGardenScreenController meditation;
+        [SerializeField] private SettingsScreenController settings;
         [SerializeField] private LoadingScreenController loading;
         [SerializeField] private DetoxModalController detoxModal;
         [SerializeField] private SleepModeScreenController sleepMode;
         [SerializeField] private LevelClearScreenController levelClear;
         [SerializeField] private GameOverScreenController gameOver;
+        [SerializeField] private TutorialOverlayController tutorial;
+        [SerializeField] private IdleRewardModalController idleReward;
+        [SerializeField] private ReferralShareScreenController referral;
+        [SerializeField] private PhotoStudioScreenController photoStudio;
 
         private UIAssetRegistryRuntime assets;
         private readonly List<UIScreenBase> screens = new List<UIScreenBase>();
@@ -83,12 +89,18 @@ namespace WhiskerTales.UI
             AddScreen(gameplay);
             AddScreen(catBonding);
             AddScreen(cafeRestoration);
+            AddScreen(arcade);
             AddScreen(meditation);
+            AddScreen(settings);
             AddScreen(loading);
             AddScreen(detoxModal);
             AddScreen(sleepMode);
             AddScreen(levelClear);
             AddScreen(gameOver);
+            AddScreen(tutorial);
+            AddScreen(idleReward);
+            AddScreen(referral);
+            AddScreen(photoStudio);
         }
 
         private void AddScreen(UIScreenBase screen)
