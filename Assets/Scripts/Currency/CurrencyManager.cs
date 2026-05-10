@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using WhiskerTales.Core;
 
 namespace WhiskerTales.Currency
 {
@@ -123,5 +124,15 @@ namespace WhiskerTales.Currency
             Debug.LogError($"[CurrencyManager] IAP BLOCKED: nyangi-heart cannot be purchased ({productId}, amount={amount}).");
             return false;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public void DebugResetDailyGained()
+        {
+            dailyGained = 0;
+            Save();
+            DebugLogger.Info(LogCategory.Save,
+                "CurrencyManager dailyGained reset for test/debug.");
+        }
+#endif
     }
 }

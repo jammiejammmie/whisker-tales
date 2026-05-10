@@ -25,6 +25,13 @@ namespace WhiskerTales.EditorTests
                 // Edit 모드는 Awake가 자동으로 안 불리므로 명시 초기화 (싱글톤 + PlayerPrefs 로드)
                 cm.EnsureInitialized();
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                // Reset daily-cap counter so repeated test runs in the same calendar day don't accumulate
+                // past DAILY_CAP and starve Test 2's heart award. Must run AFTER EnsureInitialized so the
+                // manager has loaded PlayerPrefs and Save() will write 0 back.
+                cm.DebugResetDailyGained();
+#endif
+
                 MeditationGardenController ctrl = ctrlGo.AddComponent<MeditationGardenController>();
 
                 // 클린 시작
