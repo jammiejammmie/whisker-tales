@@ -26,6 +26,9 @@ namespace WhiskerTales.Puzzle
         private bool isAnimating;
         private int currentLevelId;
 
+        // Phase 2: Match-3 Adapter — core matching delegated to BoardAdapter / Match3Core.
+        private BoardAdapter adapter;
+
         public delegate void OnMatchFoundDelegate(List<TileData> matches);
         public event OnMatchFoundDelegate OnMatchFound;
 
@@ -141,162 +144,48 @@ namespace WhiskerTales.Puzzle
                 return false;
             }
 
-            TileData tileA = GetTileSafe(x1, y1);
-            TileData tileB = GetTileSafe(x2, y2);
+            // Phase 2: route core matching/cascade through BoardAdapter (Match3Core).
+            // Adapter raises GameEvents.RaiseTileSwapped/CascadeStarted/MatchFound/SpecialTileCreated/CascadeEnded internally.
+            EnsureAdapter();
+            PushBoardToAdapter();
 
-            if (tileA == null || tileB == null)
+            Match3ResolveResult result;
+            bool success = adapter.TrySwapTiles(x1, y1, x2, y2, out result);
+            if (!success)
             {
-                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Swap failed because one tile is null: A=({x1},{y1}) B=({x2},{y2})", this);
+                DebugLogger.Info(LogCategory.Puzzle, $"[Board] Swap rejected by adapter: {result?.Reason}", this);
                 return false;
             }
 
-            if (!MatchLogic.IsValidSwap(tileA, tileB))
+            SyncFromAdapter();
+
+            // Phase 2 best-effort level-goal accounting: surrogate TileData per removed pos.
+            // RemoveBlocks / ReachScore work via count; CollectItems / DestroyObstacles are degraded
+            // because adapter result does not carry pre-removal special/obstacle metadata. Phase 3+ refines.
+            int totalRemoved = 0;
+            if (result != null)
             {
-                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Invalid swap: ({x1},{y1}) and ({x2},{y2})", this);
-                return false;
-            }
-
-            SwapTiles(tileA, tileB);
-            GameEvents.RaiseTileSwapped(x1, y1, x2, y2);
-
-            // 특수 타일 스왑 감지 (스왑 후 매치 0이어도 특수 타일이 있으면 발화)
-            bool specialOnA = tileA.specialItem != SpecialItemType.None;
-            bool specialOnB = tileB.specialItem != SpecialItemType.None;
-
-            List<List<TileData>> currentMatches = MatchLogic.FindAllMatches(board);
-            bool hasInitialMatch = currentMatches.Count > 0;
-
-            if (!hasInitialMatch && !specialOnA && !specialOnB)
-            {
-                // 매치 없음 + 특수 아님 → 스왑 취소
-                SwapTiles(tileA, tileB);
-                DebugLogger.Info(LogCategory.Puzzle, "[Board] No match, swap cancelled", this);
-                return false;
-            }
-
-            HashSet<TileData> swapOrigins = new HashSet<TileData> { tileA, tileB };
-            List<TileData> cumulativeRemoved = new List<TileData>();
-            HashSet<TileData> pendingSwapActivation = new HashSet<TileData>();
-
-            // 특수-only 스왑: 매치 없는데 특수 타일 swap → 즉시 발화
-            if (!hasInitialMatch)
-            {
-                if (specialOnA && specialOnB)
+                foreach (CascadeStep step in result.CascadeSteps)
                 {
-                    foreach (var t in SpecialItem.ActivateCombo(tileA, tileB, board))
-                    {
-                        pendingSwapActivation.Add(t);
-                    }
-                    tileA.specialItem = SpecialItemType.None;
-                    tileB.specialItem = SpecialItemType.None;
+                    totalRemoved += step.RemovedTiles.Count;
                 }
-                else
+                if (result.TotalCascadeDepth > 1)
                 {
-                    TileData spec = specialOnA ? tileA : tileB;
-                    TileData partner = specialOnA ? tileB : tileA;
-                    ActivateSpecial(spec, partner.type, pendingSwapActivation);
+                    DebugLogger.Info(LogCategory.Puzzle, $"[Board] Cascade resolved in {result.TotalCascadeDepth} iteration(s), {totalRemoved} tiles total", this);
                 }
             }
-
-            int cascade = 0;
-            while ((currentMatches.Count > 0 || pendingSwapActivation.Count > 0) && cascade < MAX_CASCADE_ITERATIONS)
-            {
-                GameEvents.RaiseCascadeStarted(cascade + 1);
-                HashSet<TileData> removalSet = new HashSet<TileData>();
-
-                // 특수-only 스왑으로 들어온 제거 후보 흡수
-                foreach (var t in pendingSwapActivation)
-                {
-                    removalSet.Add(t);
-                }
-                pendingSwapActivation.Clear();
-
-                foreach (List<TileData> matchGroup in currentMatches)
-                {
-                    OnMatchFound?.Invoke(matchGroup);
-                    GameEvents.RaiseMatchFound(matchGroup != null ? matchGroup.Count : 0);
-
-                    SpecialItemType produced = MatchLogic.GetSpecialItemType(matchGroup);
-                    TileData survivor = (produced != SpecialItemType.None)
-                        ? ChooseSurvivor(matchGroup, swapOrigins)
-                        : null;
-
-                    if (produced != SpecialItemType.None && survivor != null)
-                    {
-                        DebugLogger.Info(LogCategory.Puzzle, $"[Board] Created {produced} at ({survivor.x},{survivor.y}) (cascade {cascade})", this);
-                        GameEvents.RaiseSpecialTileCreated(produced);
-                    }
-
-                    foreach (TileData tile in matchGroup)
-                    {
-                        if (tile == survivor)
-                        {
-                            continue;
-                        }
-
-                        // 매치로 제거되는 타일이 기존 특수 → 체인 발화
-                        if (tile.specialItem != SpecialItemType.None)
-                        {
-                            ActivateSpecial(tile, tile.type, removalSet);
-                        }
-
-                        removalSet.Add(tile);
-                    }
-
-                    if (survivor != null)
-                    {
-                        survivor.specialItem = produced;
-                        survivor.isMatched = false;
-                    }
-                }
-
-                // removalSet 안에 아직 활성화 안 된 특수 (체인 결과로 추가된 것 등) 처리
-                ResolveChainedSpecials(removalSet);
-
-                // 보드에서 실제 제거
-                foreach (TileData t in removalSet)
-                {
-                    if (t == null)
-                    {
-                        continue;
-                    }
-                    if (t.x < 0 || t.x >= BOARD_SIZE || t.y < 0 || t.y >= BOARD_SIZE)
-                    {
-                        continue;
-                    }
-                    if (board[t.y, t.x] == t)
-                    {
-                        t.isMatched = true;
-                        board[t.y, t.x] = null;
-                    }
-                    cumulativeRemoved.Add(t);
-                }
-
-                ApplyGravity();
-                FillEmpty();
-                cascade++;
-
-                // 첫 iter 이후 swapOrigins 의미 없음 (캐스케이드 매치는 중앙 타일을 survivor로)
-                swapOrigins.Clear();
-
-                currentMatches = MatchLogic.FindAllMatches(board);
-            }
-
-            if (cascade > 1)
-            {
-                DebugLogger.Info(LogCategory.Puzzle, $"[Board] Cascade resolved in {cascade} iteration(s), {cumulativeRemoved.Count} tiles total", this);
-            }
-            if (cascade >= MAX_CASCADE_ITERATIONS)
-            {
-                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Cascade hit max iterations ({MAX_CASCADE_ITERATIONS})", this);
-            }
-
-            GameEvents.RaiseCascadeEnded(cascade);
 
             if (levelGoal != null)
             {
-                // Stage 2: 목표 기반 완료/실패. UseMove는 캐스케이드 횟수와 무관하게 1회.
-                levelGoal.UpdateProgress(cumulativeRemoved);
+                if (totalRemoved > 0)
+                {
+                    List<TileData> removedSurrogate = new List<TileData>(totalRemoved);
+                    for (int i = 0; i < totalRemoved; i++)
+                    {
+                        removedSurrogate.Add(new TileData(0, 0, TileType.Fish));
+                    }
+                    levelGoal.UpdateProgress(removedSurrogate);
+                }
                 levelGoal.UseMove();
                 GameEvents.RaiseGoalUpdated(levelGoal.currentProgress, levelGoal.goalValue);
 
@@ -329,6 +218,77 @@ namespace WhiskerTales.Puzzle
             }
 
             return true;
+        }
+
+        private void EnsureAdapter()
+        {
+            if (adapter != null)
+            {
+                return;
+            }
+            adapter = new BoardAdapter();
+            adapter.Initialize(GameConstants.Board.Size, GameConstants.Board.Size, GameConstants.Board.TileTypeCount);
+        }
+
+        /// <summary>
+        /// Push current TileData[,] state into the adapter so its internal cells reflect the
+        /// authoritative board before delegating a swap. Required because Match3Core generates its
+        /// own random initial state at construction; without this push, the adapter and TileData[,]
+        /// would diverge after Initialize/SpawnTiles.
+        /// </summary>
+        private void PushBoardToAdapter()
+        {
+            if (adapter == null || board == null)
+            {
+                return;
+            }
+            for (int x = 0; x < BOARD_SIZE; x++)
+            {
+                for (int y = 0; y < BOARD_SIZE; y++)
+                {
+                    TileData td = board[y, x];
+                    if (td != null)
+                    {
+                        adapter.SetCell(x, y, (int)td.type, td.specialItem);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Pull adapter cells back into TileData[,] so BoardView and other readers see the resolved
+        /// post-cascade state. Reuses existing TileData instances when present (preserves identity
+        /// for any external references) and only updates type / specialItem / coords.
+        /// </summary>
+        private void SyncFromAdapter()
+        {
+            if (adapter == null || board == null)
+            {
+                return;
+            }
+            for (int x = 0; x < BOARD_SIZE; x++)
+            {
+                for (int y = 0; y < BOARD_SIZE; y++)
+                {
+                    Cell cell = adapter.GetCell(x, y);
+                    TileData td = board[y, x];
+                    if (cell.IsEmpty)
+                    {
+                        board[y, x] = null;
+                        continue;
+                    }
+                    if (td == null)
+                    {
+                        td = new TileData(x, y, (TileType)cell.TileType);
+                        board[y, x] = td;
+                    }
+                    td.x = x;
+                    td.y = y;
+                    td.type = (TileType)cell.TileType;
+                    td.specialItem = cell.Special;
+                    td.isMatched = false;
+                }
+            }
         }
 
         public List<TileData> FindMatches()
