@@ -1155,6 +1155,155 @@ if (cond)
 
 ---
 
+# PART F-0 — 2026-05-10 EOD 스냅샷 + 채과장 백로그 + 새 노부장 핸드오프
+
+> **이 섹션은 2026-05-10 저녁 마지막 작업 세션 종료 시점의 정확한 현황과 다음 사람이 이어받을 출발선을 담은 인계장입니다.** 새 노부장/노실장은 PART F-0를 먼저 정독한 후 PART F(우선순위)로 이동하세요.
+
+## §28A. 2026-05-10 저녁 최종 상태
+
+### 28A.1 완료된 것들 ✅
+
+| 항목 | 결과 |
+|---|---|
+| **Phase A+B+C 모두 완료** | 16개 화면 컨트롤러 100% 작성, 11/11 테스트 PASS 유지 |
+| **Editor 자동화 스크립트** | `WhiskerTales/Editor/WhiskerTalesSceneSetupEditor.cs` — 메뉴 `WhiskerTales > Setup Scene` |
+| **에셋 132개 Unity 적용** | Backgrounds 24 / Cats 17 / UI 43 / Tiles 9 / Effects 39 |
+| **Setup Scene 실행 성공** | Main.unity + 16개 prefab 자동 생성 (노란 warning 386개 — 기능 영향 없음 — / 빨간 에러 0개) |
+| **APK 빌드 성공** | `C:\Builds\WhiskerTales.apk` — 105 MB, 빌드 시간 1분 44초, ARM64+IL2CPP+min SDK 26 |
+| **폰 설치 성공** | adb install 정상 |
+
+### 28A.2 미완성 ❌ — 다음 노부장이 처리해야 할 것
+
+**증상:** 폰에 APK 설치 후 실행 → 화면에 아무것도 안 나옴.
+
+**근본 원인 (2026-05-10 저녁 노실장 진단 결과):**
+
+PNG 132개 모두 `textureType: 0` (Unity 기본 — Texture2D)로 import됨. Unity 프로젝트가 3D 모드라서 PNG 기본 타입이 Texture2D고, `WhiskerTalesSceneSetupEditor.AutoMapSprites()`의 `AssetDatabase.FindAssets("xxx t:Sprite", ...)` 필터가 이들을 sprite로 인식하지 못함. 결과:
+- `UIAssetRegistryRuntime.sprites` 73 entries 중 **47개가 NULL**
+- `PhoneVisibleSceneInstaller`의 인스펙터 wire-up은 21개 모두 정상 ✓
+- `BottomNavRuntimeBinder` 6개 인스펙터 wire-up도 정상 ✓
+- 매핑된 26개는 기존 `Assets/Resources/Sprites/Backgrounds/` 등에 있던 구버전 sprite 자산 (textureType=8 또는 sprite sub-asset 보유)
+
+**Unity Editor 수동 작업 필요 (선택지 A 또는 B):**
+
+#### 옵션 A — 자동 (권장): 텍스처 import preset을 Sprite로 일괄 변경
+1. Unity Editor 메뉴: **Edit > Project Settings > Editor > Default Behavior Mode → 2D**
+2. `Assets/WhiskerTales/Art/` 우클릭 → **Reimport** (모든 PNG가 자동으로 Sprite로 재import됨)
+3. 또는 각 PNG 인스펙터에서 **Texture Type: Sprite (2D and UI)** 일괄 적용 (Apply 후 다중 선택)
+4. **WhiskerTales > Setup Scene** 메뉴 재실행 → AutoMapSprites가 132 PNG를 모두 인식
+5. 재빌드 → 폰 테스트
+
+#### 옵션 B — 수동: Inspector에서 16개 컨트롤러 + 5개 탭 + sprite 직접 드래그
+1. `Main.unity` 열기
+2. `WhiskerRuntime` GameObject 선택 → `PhoneVisibleSceneInstaller`의 16개 screen 필드에 자식 GameObject 드래그 (이미 자동 wire 됐으므로 검증만 필요)
+3. `BottomNav` GameObject 선택 → `BottomNavRuntimeBinder`의 5개 tab button 필드에 자식 Tab_* 드래그
+4. `WhiskerRuntime` → `UIAssetRegistryRuntime`의 sprites 리스트에 132개 sprite 매핑 (47개 빈칸 채우기)
+5. 재빌드 → 폰 테스트
+
+→ **옵션 A가 root cause fix이고 향후 sprite 추가 시에도 안정적**. 옵션 B는 임시 방편.
+
+### 28A.3 채집사한테 받아야 할 것
+
+| 항목 | 비고 |
+|---|---|
+| `game_over_bg.png` | 유일하게 미보유한 spec 키 (`level_clear_bg.png`만 있음). 게임 오버 화면 배경. |
+| 게임 완성 후 마케팅 이미지 전면 교체 | 인스타 / 구글 플레이 스토어 스크린샷 / 마케팅 자료 — 출시 직전 채집사가 게임 실제 화면 캡처 기반으로 재제작 |
+
+---
+
+## §28B. 채과장 작업 백로그 (24항목, 우선순위 순)
+
+> 모든 항목은 §7 채과장 코드 4가지 수정 패턴 + §28 절대 원칙(brace, namespace, LogCategory, GameConstants, AppBootstrap 미터치, 타일 키 milk/catnip/pawprint) 준수 필수.
+
+### 코드 설계 — 게임플레이 (10)
+
+| # | 항목 | 연동 |
+|---|---|---|
+| ① | **장애물 5종 전체 코드** (Dust / TeaCup / Rope / Frozen / Crate) | `BoardAdapter` + `Match3Core` obstacle layer 확장 |
+| ② | **퍼즐 feel 타이밍 수치 + 코드** (swap 0.16s / anticipation 0.04s / pop stagger 0.03s / cascade 0.07s) | `BoardAnimator` 적용 (`GameConstants.Timing.*`) |
+| ③ | **카페 복원 감정 연출 코드** (lantern lighting / petals 파티클 / camera drift / ambient sound swell) | `CafeRestorationScreenController` 연동 |
+| ④ | **일일 감정 루프 코드** (오늘의 차 / 오늘의 한마디 / 오늘의 고양이 기분 — 매일 자정 KST 리셋) | 신규 `DailyMoodService` 또는 `DetoxMomentService` 확장 |
+| ⑤ | **Dynamic ambience 코드** (morning / afternoon / sunset / rainy — 배경 레이어 자동 전환 + 사운드 연동) | 신규 `AmbienceController` |
+| ⑥ | **튜토리얼 실제 흐름 코드** (1~5레벨 onboarding / guided swap 연출) | `TutorialOverlayController` 연동 |
+| ⑦ | **고양이 교감 실제 동작 코드** (쓰다듬기 / 간식 / 놀기 애니메이션 / 호감도 증가 연출) | `CatBondingScreenController` 연동 |
+| ⑧ | **명상 정원 모래 그리기 코드** (드래그 draw logic / 일일 cap) | `MeditationGardenScreenController` 연동 |
+| ⑨ | **수면 모드 실제 reward loop 코드** (offline timer / reward 계산 / anti-cheat) | `SleepModeScreenController` + `SleepModeManager` 연동 |
+| ⑩ | **사진 스튜디오 실제 작동 코드** (스크린샷 캡처 / 공유 API) | `PhotoStudioScreenController` 연동 |
+
+### 콘텐츠 설계 (5)
+
+| # | 항목 | 비고 |
+|---|---|---|
+| ⑪ | **레벨 디자인 JSON 80~120개** | 난이도 곡선 + 장애물 페이싱, `schemaVersion: 1` 형식 (`Resources/Levels/levels_*.json`) |
+| ⑫ | **디톡스 메시지 80~120개 문구** | 시간대별 variation + 감정 curve, `DetoxMessageRepository`용 |
+| ⑬ | **고양이 5마리 개별 대화/반응** | 사미/벨라/나비/구름이/호두 — 교감 상황별 + 호감도 단계별 대사 |
+| ⑭ | **카페 복원 15단계 대화/반응** | 단계 완료 시 대사 — 고양이 + 단골 손님(미라/준호/지은/철수/영희) 반응 |
+| ⑮ | **튜토리얼 1~5레벨 스토리 텍스트** | 오프닝 시나리오 / 할머니 편지 내용 / 첫 고양이 구조 사연 |
+
+### 밸런싱 수치 설계 (3)
+
+| # | 항목 | 비고 |
+|---|---|---|
+| ⑯ | **레벨별 난이도 수치 전체** | 이동 횟수 / 목표 수 / 별점 기준 (1★ 2★ 3★) / 실패율 목표 |
+| ⑰ | **경제 밸런스 수치** | 하트 충전 시간 / 최대 보유 / 멸치 획득률 per 레벨 / 카페 복원 별 비용 15단계 / 방치 보상 상한선·시간 / 냥이 마음 💝 획득 테이블 |
+| ⑱ | **IAP 패키지 상품 구성** | "집사의 정성" 시리즈 가격대별 구성 / 첫 구매 유도 전략 |
+
+### 기술 설계 (3)
+
+| # | 항목 | 비고 |
+|---|---|---|
+| ⑲ | **Firebase Analytics 이벤트 설계** | 트래킹 이벤트 목록 / funnel / retention 지표 |
+| ⑳ | **Remote Config 구조 설계** | 원격 조정 수치 목록 / A/B 테스트 구조 / 앱 업데이트 없이 레벨 추가 방법 |
+| ㉑ | **AppBootstrap 분해 설계 (Phase 6)** | 안전한 분해 순서 / `SystemsBootstrap` 이관 계획 |
+
+### 출시 준비 (3)
+
+| # | 항목 | 비고 |
+|---|---|---|
+| ㉒ | **구글 플레이 제출 체크리스트** | technical requirements / store listing 전략 / ASO 키워드 / 스크린샷 구성 |
+| ㉓ | **앱스토어 카피 작성** | 한국어/영어 — short description / full description / keywords |
+| ㉔ | **수면 모드 + 디톡스 철학 표현** | 앱스토어 표현 방법 / 마케팅 언어 정제 |
+
+---
+
+## §28C. 새 노부장에게 (필독)
+
+### 이 게임의 핵심 철학
+> **"더 빠를 필요 없고 더 따뜻해야 함"** — 채과장 핵심 조언
+
+새 대화 시작 시 첫 마디 (사용자가 말할 것):
+> *"GitHub에서 WHISKER_TALES_MASTER_BRIEFING_v4.0.md 읽어줘. 거기서부터 시작이야. 🐾"*
+
+### 절대 원칙 (요약)
+
+1. **`AppBootstrap.cs` 건드리지 말 것** (Phase 6까지 락다운)
+2. **강제 광고 절대 금지** (Nyang TV는 자발적만)
+3. **타일 키는 `tile_milk` / `tile_catnip` / `tile_pawprint`** (절대 `tile_bell` / `tile_leaf` / `tile_jar` 아님 — TileType enum + 채집사 파일 + AppBootstrap 모두 일치)
+
+### 채과장 코드 받으면 반드시 5가지 패턴 점검 (§7 확장)
+
+| # | 점검 | 보정 |
+|---|---|---|
+| 1 | `namespace WhiskerTales.{도메인}` 누락 | 추가 (Puzzle / Core / Feel / UI / Detox / Save / Pooling / Assets 등) |
+| 2 | `GameConstants.BoardSize` (오타) | `GameConstants.Board.Size` (nested) |
+| 3 | `DebugCategory.Puzzle` (오타) | `LogCategory.Puzzle` (실제 enum 이름) |
+| 4 | brace 없는 `if` (한 줄짜리 포함) | **모든 if/else에 `{ }` 필수** (한 줄도 예외 없음) |
+| 5 | `tile_bell / tile_leaf / tile_jar` 키 | `tile_milk / tile_catnip / tile_pawprint`로 보정 |
+
+### 추가 빈도 높은 보정
+
+- 컨트롤러에서 `[SerializeField] private CanvasGroup canvasGroup` 선언 시 → `UIScreenBase.canvasGroup`와 직렬화 충돌. `rootCanvas`로 리네임 (`LevelClearScreenController` 컨벤션)
+- DOTween 체인 호출 (`DOScale().SetEase(...)`)에서 SetEase 미해결 → `#if WHISKER_DOTWEEN using DG.Tweening; #endif` 추가
+- 파일 경로 spec(`Assets/WhiskerTales/Scripts/UI/...`)이 본 프로젝트 컨벤션(`Assets/WhiskerTales/UI/...`)과 다를 시 → 본 컨벤션 우선
+
+### 다음 노실장에게 인계 시 컨텍스트
+- **현재 풀린 상태에서 빌드 → 폰 → 빈 화면 (sprite 매핑 47/73 NULL).** §28A.2 옵션 A로 root cause fix 후 재빌드 권장.
+- 작업 시작 전 baseline 브랜치 새로 생성 (예: `baseline-20260511`).
+- 11/11 테스트 PASS 유지가 모든 커밋의 통과 조건.
+- 사용자(지원님)는 "쉬어도 괜찮다고 말해주는 게임"이라는 한 문장에 모든 결정을 정렬시키는 사람. 빠른 산출보다 따뜻한 결정을 원하면 그 방향으로 갈 것.
+
+---
+
 # PART F — 다음 할 일
 
 ## §29. 우선순위 (즉시 / 1주 / 1개월)
