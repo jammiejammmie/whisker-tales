@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using WhiskerTales.Core;
 
 namespace WhiskerTales.Puzzle
 {
@@ -18,7 +19,7 @@ namespace WhiskerTales.Puzzle
         public TextMeshProUGUI movesText;
         public TextMeshProUGUI statusText;
 
-        private const int GRID_SIZE = 8;
+        private const int GRID_SIZE = GameConstants.Board.Size;
         private TileView[,] views = new TileView[GRID_SIZE, GRID_SIZE];
         private TileView selectedView;
 
@@ -28,7 +29,7 @@ namespace WhiskerTales.Puzzle
         {
             if (gridContainer == null)
             {
-                Debug.LogError("[BoardView] gridContainer is not assigned");
+                DebugLogger.Error(LogCategory.UI, "[BoardView] gridContainer is not assigned", this);
                 return;
             }
 
@@ -46,8 +47,15 @@ namespace WhiskerTales.Puzzle
                     go.transform.SetParent(gridContainer, false);
 
                     TileView tv = go.GetComponent<TileView>();
+                    if (tv == null)
+                    {
+                        DebugLogger.Error(LogCategory.UI, $"[BoardView] TileView component missing on Tile_{x}_{y}", this);
+                        Destroy(go);
+                        continue;
+                    }
+
                     tv.Setup(x, y, this);
-                    views[y, x] = tv;
+                    SetViewSafe(x, y, tv);
                 }
             }
 
@@ -58,7 +66,12 @@ namespace WhiskerTales.Puzzle
 
         private void BindBoardEvents()
         {
-            if (board == null || eventsBound) return;
+            if (eventsBound) return;
+            if (board == null)
+            {
+                DebugLogger.Warning(LogCategory.UI, "[BoardView] Cannot bind events because board is null", this);
+                return;
+            }
             board.OnLevelComplete += HandleLevelComplete;
             board.OnLevelFailed += HandleLevelFailed;
             eventsBound = true;
@@ -76,7 +89,21 @@ namespace WhiskerTales.Puzzle
 
         public void OnTileClicked(TileView clicked)
         {
-            if (board == null || clicked == null) return;
+            if (board == null)
+            {
+                DebugLogger.Warning(LogCategory.UI, "[BoardView] Tile click ignored because board is null", this);
+                return;
+            }
+            if (clicked == null)
+            {
+                DebugLogger.Warning(LogCategory.UI, "[BoardView] Tile click ignored because clicked view is null", this);
+                return;
+            }
+            if (!IsValidPosition(clicked.x, clicked.y))
+            {
+                DebugLogger.Warning(LogCategory.UI, $"[BoardView] Tile click ignored due to invalid coordinates: ({clicked.x},{clicked.y})", this);
+                return;
+            }
             if (board.IsLevelComplete()) return;
             if (levelGoal != null && levelGoal.IsMovesExceeded()) return;
 
@@ -124,14 +151,19 @@ namespace WhiskerTales.Puzzle
 
         public void RefreshAll()
         {
-            if (board == null) return;
+            if (board == null)
+            {
+                DebugLogger.Warning(LogCategory.UI, "[BoardView] RefreshAll ignored because board is null", this);
+                return;
+            }
 
             for (int y = 0; y < GRID_SIZE; y++)
             {
                 for (int x = 0; x < GRID_SIZE; x++)
                 {
                     TileData td = board.GetTile(x, y);
-                    if (views[y, x] != null) views[y, x].Refresh(td);
+                    TileView view = GetViewSafe(x, y);
+                    if (view != null) view.Refresh(td);
                 }
             }
 
@@ -170,6 +202,37 @@ namespace WhiskerTales.Puzzle
         private void UpdateStatus(string msg)
         {
             if (statusText != null) statusText.text = msg;
+        }
+
+        private bool IsValidPosition(int x, int y)
+        {
+            return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE;
+        }
+
+        private TileView GetViewSafe(int x, int y)
+        {
+            if (!IsValidPosition(x, y))
+            {
+                DebugLogger.Warning(LogCategory.UI, $"[BoardView] Out-of-bounds view access: ({x},{y})", this);
+                return null;
+            }
+            if (views == null)
+            {
+                DebugLogger.Warning(LogCategory.UI, "[BoardView] views array is null", this);
+                return null;
+            }
+            return views[y, x];
+        }
+
+        private void SetViewSafe(int x, int y, TileView view)
+        {
+            if (!IsValidPosition(x, y))
+            {
+                DebugLogger.Warning(LogCategory.UI, $"[BoardView] Ignored SetViewSafe out-of-bounds: ({x},{y})", this);
+                return;
+            }
+            if (views == null) views = new TileView[GRID_SIZE, GRID_SIZE];
+            views[y, x] = view;
         }
     }
 }

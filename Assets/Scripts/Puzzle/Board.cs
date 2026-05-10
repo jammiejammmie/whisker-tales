@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
+using WhiskerTales.Core;
 
 namespace WhiskerTales.Puzzle
 {
@@ -12,7 +13,7 @@ namespace WhiskerTales.Puzzle
     {
         public static Board instance { get; private set; }
 
-        private const int BOARD_SIZE = 8;
+        private const int BOARD_SIZE = GameConstants.Board.Size;
 
         private TileData[,] board;
         private LevelGoal levelGoal;
@@ -23,6 +24,7 @@ namespace WhiskerTales.Puzzle
         private int starsEarned;
         private bool isLevelComplete;
         private bool isAnimating;
+        private int currentLevelId;
 
         public delegate void OnMatchFoundDelegate(List<TileData> matches);
         public event OnMatchFoundDelegate OnMatchFound;
@@ -51,7 +53,8 @@ namespace WhiskerTales.Puzzle
         {
             board = new TileData[BOARD_SIZE, BOARD_SIZE];
             levelGoal = goal;
-            moveLimit = levelData != null ? levelData.moveLimit : 25;
+            currentLevelId = levelData != null ? levelData.levelId : 0;
+            moveLimit = levelData != null ? levelData.moveLimit : GameConstants.Board.DefaultMoveLimit;
             movesUsed = 0;
             starsEarned = 0;
             isLevelComplete = false;
@@ -63,11 +66,12 @@ namespace WhiskerTales.Puzzle
             }
 
             SpawnTiles();
+            GameEvents.RaiseLevelStarted(currentLevelId);
 
             if (levelData != null)
-                Debug.Log($"[Board] Initialized goal={levelData.goalType} value={levelData.goalValue} moves={moveLimit}");
+                DebugLogger.Info(LogCategory.Puzzle, $"[Board] Initialized goal={levelData.goalType} value={levelData.goalValue} moves={moveLimit}", this);
             else
-                Debug.Log($"[Board] Initialized (no level data) moves={moveLimit}");
+                DebugLogger.Info(LogCategory.Puzzle, $"[Board] Initialized (no level data) moves={moveLimit}", this);
         }
 
         /// <summary>
@@ -77,6 +81,7 @@ namespace WhiskerTales.Puzzle
         {
             board = new TileData[BOARD_SIZE, BOARD_SIZE];
             levelGoal = null;
+            currentLevelId = 0;
             moveLimit = moveLimitValue;
             movesUsed = 0;
             starsEarned = 0;
@@ -84,11 +89,17 @@ namespace WhiskerTales.Puzzle
             isAnimating = false;
 
             SpawnTiles();
-            Debug.Log($"[Board] Initialized (legacy) move limit: {moveLimit}");
+            DebugLogger.Info(LogCategory.Puzzle, $"[Board] Initialized (legacy) move limit: {moveLimit}", this);
+            GameEvents.RaiseLevelStarted(currentLevelId);
         }
 
         public void SpawnTiles()
         {
+            if (board == null || board.GetLength(0) != BOARD_SIZE || board.GetLength(1) != BOARD_SIZE)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, "[Board] SpawnTiles called before board allocation; allocating now", this);
+                board = new TileData[BOARD_SIZE, BOARD_SIZE];
+            }
             for (int y = 0; y < BOARD_SIZE; y++)
             {
                 for (int x = 0; x < BOARD_SIZE; x++)
@@ -99,10 +110,10 @@ namespace WhiskerTales.Puzzle
             }
 
             RemoveInitialMatches();
-            Debug.Log("[Board] Tiles spawned");
+            DebugLogger.Info(LogCategory.Puzzle, "[Board] Tiles spawned", this);
         }
 
-        private const int MAX_CASCADE_ITERATIONS = 10;
+        private const int MAX_CASCADE_ITERATIONS = GameConstants.Board.MaxCascadeIterations;
 
         /// <summary>
         /// 두 타일 스왑 시도. 매치가 발생하면 캐스케이드 루프(최대 MAX_CASCADE_ITERATIONS)로
@@ -111,22 +122,35 @@ namespace WhiskerTales.Puzzle
         /// </summary>
         public bool TrySwapTiles(int x1, int y1, int x2, int y2)
         {
+            if (!EnsureBoardReady()) return false;
+            if (isAnimating)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, "[Board] Swap ignored while board is animating", this);
+                return false;
+            }
             if (!IsValidPosition(x1, y1) || !IsValidPosition(x2, y2))
             {
-                Debug.LogWarning($"[Board] Invalid position: ({x1},{y1}) or ({x2},{y2})");
+                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Invalid position: ({x1},{y1}) or ({x2},{y2})", this);
                 return false;
             }
 
-            TileData tileA = board[y1, x1];
-            TileData tileB = board[y2, x2];
+            TileData tileA = GetTileSafe(x1, y1);
+            TileData tileB = GetTileSafe(x2, y2);
+
+            if (tileA == null || tileB == null)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Swap failed because one tile is null: A=({x1},{y1}) B=({x2},{y2})", this);
+                return false;
+            }
 
             if (!MatchLogic.IsValidSwap(tileA, tileB))
             {
-                Debug.LogWarning($"[Board] Invalid swap: ({x1},{y1}) and ({x2},{y2})");
+                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Invalid swap: ({x1},{y1}) and ({x2},{y2})", this);
                 return false;
             }
 
             SwapTiles(tileA, tileB);
+            GameEvents.RaiseTileSwapped(x1, y1, x2, y2);
 
             // 특수 타일 스왑 감지 (스왑 후 매치 0이어도 특수 타일이 있으면 발화)
             bool specialOnA = tileA.specialItem != SpecialItemType.None;
@@ -139,7 +163,7 @@ namespace WhiskerTales.Puzzle
             {
                 // 매치 없음 + 특수 아님 → 스왑 취소
                 SwapTiles(tileA, tileB);
-                Debug.Log("[Board] No match, swap cancelled");
+                DebugLogger.Info(LogCategory.Puzzle, "[Board] No match, swap cancelled", this);
                 return false;
             }
 
@@ -167,6 +191,7 @@ namespace WhiskerTales.Puzzle
             int cascade = 0;
             while ((currentMatches.Count > 0 || pendingSwapActivation.Count > 0) && cascade < MAX_CASCADE_ITERATIONS)
             {
+                GameEvents.RaiseCascadeStarted(cascade + 1);
                 HashSet<TileData> removalSet = new HashSet<TileData>();
 
                 // 특수-only 스왑으로 들어온 제거 후보 흡수
@@ -176,6 +201,7 @@ namespace WhiskerTales.Puzzle
                 foreach (List<TileData> matchGroup in currentMatches)
                 {
                     OnMatchFound?.Invoke(matchGroup);
+                    GameEvents.RaiseMatchFound(matchGroup != null ? matchGroup.Count : 0);
 
                     SpecialItemType produced = MatchLogic.GetSpecialItemType(matchGroup);
                     TileData survivor = (produced != SpecialItemType.None)
@@ -183,7 +209,8 @@ namespace WhiskerTales.Puzzle
                         : null;
 
                     if (produced != SpecialItemType.None && survivor != null)
-                        Debug.Log($"[Board] Created {produced} at ({survivor.x},{survivor.y}) (cascade {cascade})");
+                        DebugLogger.Info(LogCategory.Puzzle, $"[Board] Created {produced} at ({survivor.x},{survivor.y}) (cascade {cascade})", this);
+                        GameEvents.RaiseSpecialTileCreated(produced);
 
                     foreach (TileData tile in matchGroup)
                     {
@@ -230,27 +257,32 @@ namespace WhiskerTales.Puzzle
             }
 
             if (cascade > 1)
-                Debug.Log($"[Board] Cascade resolved in {cascade} iteration(s), {cumulativeRemoved.Count} tiles total");
+                DebugLogger.Info(LogCategory.Puzzle, $"[Board] Cascade resolved in {cascade} iteration(s), {cumulativeRemoved.Count} tiles total", this);
             if (cascade >= MAX_CASCADE_ITERATIONS)
-                Debug.LogWarning($"[Board] Cascade hit max iterations ({MAX_CASCADE_ITERATIONS})");
+                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Cascade hit max iterations ({MAX_CASCADE_ITERATIONS})", this);
+
+            GameEvents.RaiseCascadeEnded(cascade);
 
             if (levelGoal != null)
             {
                 // Stage 2: 목표 기반 완료/실패. UseMove는 캐스케이드 횟수와 무관하게 1회.
                 levelGoal.UpdateProgress(cumulativeRemoved);
                 levelGoal.UseMove();
+                GameEvents.RaiseGoalUpdated(levelGoal.currentProgress, levelGoal.goalValue);
 
                 if (levelGoal.IsGoalAchieved())
                 {
                     isLevelComplete = true;
                     starsEarned = levelGoal.CalculateStars();
                     OnLevelComplete?.Invoke(starsEarned);
-                    Debug.Log($"[Board] Goal achieved. Stars: {starsEarned}");
+                    GameEvents.RaiseLevelCompleted(currentLevelId, starsEarned);
+                    DebugLogger.Info(LogCategory.Puzzle, $"[Board] Goal achieved. Stars: {starsEarned}", this);
                 }
                 else if (levelGoal.IsMovesExceeded())
                 {
                     OnLevelFailed?.Invoke();
-                    Debug.Log("[Board] Moves exhausted before goal achieved");
+                    GameEvents.RaiseLevelFailed(currentLevelId);
+                    DebugLogger.Info(LogCategory.Puzzle, "[Board] Moves exhausted before goal achieved", this);
                 }
             }
             else
@@ -261,7 +293,8 @@ namespace WhiskerTales.Puzzle
                     isLevelComplete = true;
                     starsEarned = CalculateStarsLegacy();
                     OnLevelComplete?.Invoke(starsEarned);
-                    Debug.Log($"[Board] Level complete (legacy). Stars: {starsEarned}");
+                    GameEvents.RaiseLevelCompleted(currentLevelId, starsEarned);
+                    DebugLogger.Info(LogCategory.Puzzle, $"[Board] Level complete (legacy). Stars: {starsEarned}", this);
                 }
             }
 
@@ -270,8 +303,9 @@ namespace WhiskerTales.Puzzle
 
         public List<TileData> FindMatches()
         {
-            List<List<TileData>> allMatches = MatchLogic.FindAllMatches(board);
             List<TileData> result = new List<TileData>();
+            if (!EnsureBoardReady()) return result;
+            List<List<TileData>> allMatches = MatchLogic.FindAllMatches(board);
             foreach (List<TileData> matches in allMatches)
                 result.AddRange(matches);
             return result;
@@ -279,20 +313,23 @@ namespace WhiskerTales.Puzzle
 
         public void RemoveMatches(List<List<TileData>> allMatches)
         {
+            if (!EnsureBoardReady()) return;
             if (allMatches == null || allMatches.Count == 0) return;
             foreach (List<TileData> matches in allMatches)
             {
                 foreach (TileData tile in matches)
                 {
+                    if (tile == null || !IsValidPosition(tile.x, tile.y)) continue;
                     tile.isMatched = true;
-                    board[tile.y, tile.x] = null;
+                    if (board[tile.y, tile.x] == tile) board[tile.y, tile.x] = null;
                 }
             }
-            Debug.Log($"[Board] {allMatches.Count} match groups removed");
+            DebugLogger.Info(LogCategory.Puzzle, $"[Board] {allMatches.Count} match groups removed", this);
         }
 
         public void ApplyGravity()
         {
+            if (!EnsureBoardReady()) return;
             for (int x = 0; x < BOARD_SIZE; x++)
             {
                 int writePos = BOARD_SIZE - 1;
@@ -310,11 +347,12 @@ namespace WhiskerTales.Puzzle
                     }
                 }
             }
-            Debug.Log("[Board] Gravity applied");
+            DebugLogger.Verbose(LogCategory.Puzzle, "[Board] Gravity applied", this);
         }
 
         public void FillEmpty()
         {
+            if (!EnsureBoardReady()) return;
             for (int x = 0; x < BOARD_SIZE; x++)
             {
                 for (int y = 0; y < BOARD_SIZE; y++)
@@ -326,11 +364,12 @@ namespace WhiskerTales.Puzzle
                     }
                 }
             }
-            Debug.Log("[Board] Empty spaces filled");
+            DebugLogger.Verbose(LogCategory.Puzzle, "[Board] Empty spaces filled", this);
         }
 
         public void PrintBoardState()
         {
+            if (!EnsureBoardReady()) return;
             string s = "[Board State]\n";
             for (int y = 0; y < BOARD_SIZE; y++)
             {
@@ -340,7 +379,7 @@ namespace WhiskerTales.Puzzle
                 }
                 s += "\n";
             }
-            Debug.Log(s);
+            DebugLogger.Verbose(LogCategory.Puzzle, s, this);
         }
 
         public int GetMovesUsed()
@@ -360,14 +399,45 @@ namespace WhiskerTales.Puzzle
 
         public TileData GetTile(int x, int y)
         {
-            if (IsValidPosition(x, y)) return board[y, x];
-            return null;
+            return GetTileSafe(x, y);
+        }
+
+        private bool EnsureBoardReady()
+        {
+            if (board == null)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, "[Board] Board array is null", this);
+                return false;
+            }
+            if (board.GetLength(0) != BOARD_SIZE || board.GetLength(1) != BOARD_SIZE)
+            {
+                DebugLogger.Error(LogCategory.Puzzle, $"[Board] Board array size mismatch: {board.GetLength(1)}x{board.GetLength(0)}", this);
+                return false;
+            }
+            return true;
+        }
+
+        private TileData GetTileSafe(int x, int y)
+        {
+            if (!EnsureBoardReady()) return null;
+            if (!IsValidPosition(x, y))
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Out-of-bounds tile access: ({x},{y})", this);
+                return null;
+            }
+            return board[y, x];
         }
 
         // ===== Private =====
 
         private void SwapTiles(TileData tileA, TileData tileB)
         {
+            if (!EnsureBoardReady()) return;
+            if (tileA == null || tileB == null)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, "[Board] SwapTiles received null tile", this);
+                return;
+            }
             int tempX = tileA.x;
             int tempY = tileA.y;
 
@@ -375,6 +445,12 @@ namespace WhiskerTales.Puzzle
             tileA.y = tileB.y;
             tileB.x = tempX;
             tileB.y = tempY;
+
+            if (!IsValidPosition(tileA.x, tileA.y) || !IsValidPosition(tileB.x, tileB.y))
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, "[Board] SwapTiles produced invalid coordinates", this);
+                return;
+            }
 
             board[tileA.y, tileA.x] = tileA;
             board[tileB.y, tileB.x] = tileB;
@@ -387,7 +463,7 @@ namespace WhiskerTales.Puzzle
 
         private TileType GetRandomTileType()
         {
-            int randomIndex = Random.Range(0, 6);
+            int randomIndex = Random.Range(0, GameConstants.Board.TileTypeCount);
             return (TileType)randomIndex;
         }
 
@@ -465,7 +541,7 @@ namespace WhiskerTales.Puzzle
         {
             int safety = 0;
             bool anyActivated = true;
-            while (anyActivated && safety < 50)
+            while (anyActivated && safety < GameConstants.Board.SpecialChainSafetyLimit)
             {
                 anyActivated = false;
                 List<TileData> toActivate = new List<TileData>();
@@ -489,7 +565,7 @@ namespace WhiskerTales.Puzzle
         /// </summary>
         private void RemoveInitialMatches()
         {
-            const int maxIterations = 100;
+            const int maxIterations = GameConstants.Board.InitialMatchResolveMaxIterations;
             int iter = 0;
             while (iter < maxIterations)
             {
@@ -510,9 +586,9 @@ namespace WhiskerTales.Puzzle
             }
 
             if (iter >= maxIterations)
-                Debug.LogWarning($"[Board] Initial matches not fully resolved after {maxIterations} iterations");
+                DebugLogger.Warning(LogCategory.Puzzle, $"[Board] Initial matches not fully resolved after {maxIterations} iterations", this);
             else if (iter > 0)
-                Debug.Log($"[Board] Initial matches resolved in {iter} iteration(s)");
+                DebugLogger.Info(LogCategory.Puzzle, $"[Board] Initial matches resolved in {iter} iteration(s)", this);
         }
 
         /// <summary>
@@ -521,7 +597,8 @@ namespace WhiskerTales.Puzzle
         /// </summary>
         private TileType PickNonMatchingType(int x, int y)
         {
-            const int numTypes = 6;
+            if (!EnsureBoardReady()) return GetRandomTileType();
+            const int numTypes = GameConstants.Board.TileTypeCount;
             for (int attempt = 0; attempt < numTypes * 4; attempt++)
             {
                 TileType candidate = (TileType)Random.Range(0, numTypes);
@@ -536,6 +613,7 @@ namespace WhiskerTales.Puzzle
         /// </summary>
         private bool WouldCauseMatchAt(int x, int y, TileType type)
         {
+            if (!EnsureBoardReady() || !IsValidPosition(x, y)) return false;
             // 가로 좌측 2칸
             if (x >= 2 && SameType(board[y, x - 1], type) && SameType(board[y, x - 2], type)) return true;
             // 가로 우측 2칸
@@ -561,6 +639,7 @@ namespace WhiskerTales.Puzzle
         {
             board = new TileData[BOARD_SIZE, BOARD_SIZE];
             levelGoal = null;
+            currentLevelId = 0;
             moveLimit = moveLimitValue;
             movesUsed = 0;
             starsEarned = 0;
