@@ -70,6 +70,31 @@ namespace WhiskerTales.UI
             StartCoroutine(FadeRoutine(0f, false));
         }
 
+        // Parameterless overloads for Phase C controllers that drive their own DOTween fades.
+        // Show() activates the GameObject and enables input but does NOT animate alpha — the
+        // subclass override is responsible for alpha animation (typically alpha=0 → DOFade(1)).
+        // Hide() disables input but does NOT deactivate immediately — the subclass override
+        // animates fade-out, and the navigator (or DOTween OnComplete) handles SetActive(false).
+        public virtual void Show()
+        {
+            gameObject.SetActive(true);
+
+            if (canvasGroup != null)
+            {
+                canvasGroup.blocksRaycasts = true;
+                canvasGroup.interactable = true;
+            }
+        }
+
+        public virtual void Hide()
+        {
+            if (canvasGroup != null)
+            {
+                canvasGroup.blocksRaycasts = false;
+                canvasGroup.interactable = false;
+            }
+        }
+
         private IEnumerator FadeRoutine(float target, bool interactableWhenDone)
         {
             float start = canvasGroup.alpha;
