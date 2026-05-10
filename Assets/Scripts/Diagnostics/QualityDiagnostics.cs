@@ -98,7 +98,7 @@ namespace WhiskerTales.Diagnostics
         // ============================================================
 
         private static readonly string[] Cats = { "bella", "nabi", "sami", "hodu", "gureumi" };
-        private static readonly string[] Tiles = { "tile_yarn", "tile_fish", "tile_bell", "tile_leaf", "tile_bag", "tile_fishbone" };
+        private static readonly string[] Tiles = { "tile_yarn", "tile_fish", "tile_milk", "tile_catnip", "tile_pawprint", "tile_fishbone" };
         private static readonly string[] Icons = { "icon_paw", "icon_lock", "icon_heart", "icon_star_filled", "icon_star_empty" };
 
         private static void CheckAssets(DiagnosticReport r)
