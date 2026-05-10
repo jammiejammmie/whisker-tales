@@ -18,7 +18,7 @@ namespace WhiskerTales.EditorBuild
         public const string COMPANY_NAME  = "NyangStudio";
         public const string PACKAGE_NAME  = "com.nyangstudio.whiskertales";
         public const string OUTPUT_PATH   = @"C:\Builds\WhiskerTales.apk";
-        public const string SCENE_PATH    = "Assets/Scenes/MainScenes.unity";
+        public const string SCENE_PATH    = "Assets/WhiskerTales/Scenes/Main.unity";
 
         [MenuItem("Tools/Whisker Tales/Build Android APK")]
         public static void BuildAndroidMenu()
