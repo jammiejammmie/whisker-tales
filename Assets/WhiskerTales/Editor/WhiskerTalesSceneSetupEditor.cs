@@ -638,7 +638,7 @@ namespace WhiskerTales.EditorTools
                 "bg_zone2_stage1", "bg_zone2_stage2", "bg_zone2_stage3", "bg_zone2_stage4", "bg_zone2_stage5",
                 "bg_zone3_stage1", "bg_zone3_stage2", "bg_zone3_stage3", "bg_zone3_stage4", "bg_zone3_stage5",
                 "level_clear_bg", "game_over_bg", "cat_sami", "cat_bella", "cat_nabi", "cat_gureumi", "cat_hodu", "cat_group_main", "loading_cat",
-                "logo_whisker_tales", "tile_yarn", "tile_fish", "tile_bell", "tile_leaf", "tile_jar", "tile_fishbone", "tile_rocket", "tile_bomb", "tile_rainbow",
+                "logo_whisker_tales", "tile_yarn", "tile_fish", "tile_milk", "tile_catnip", "tile_pawprint", "tile_fishbone", "tile_rocket", "tile_bomb", "tile_rainbow",
                 "nav_bar_bg", "tab_home", "tab_catroom", "tab_cafe", "tab_arcade", "tab_meditation", "btn_back", "btn_settings", "btn_home", "btn_restart", "btn_share", "btn_camera", "btn_pause", "btn_next", "btn_retry", "btn_restore", "btn_confirm", "btn_skip",
                 "nyangi_heart", "nyangi_heart_plus1", "icon_coin", "icon_lock", "icon_star_filled", "icon_star_empty", "icon_paw", "icon_heart", "highlight_ring", "hint_tap", "hint_swipe", "arrow_right", "arrow_down", "tutorial_bubble", "detox_card_bg", "emotion_happy", "emotion_love", "emotion_sleepy", "emotion_excited", "emotion_sad", "emotion_surprised"
             };
