@@ -35,6 +35,8 @@ Thumbs.db
 !Assets/Sprites/**/*.meta
 !Assets/Fonts/**/*.meta
 !Assets/Resources/**/*.meta
+!Assets/WhiskerTales/**/*.meta
+!Assets/Plugins/**/*.meta
 
 # Claude Code local settings
 .claude/settings.local.json
