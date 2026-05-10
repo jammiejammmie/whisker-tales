@@ -2,10 +2,6 @@ using System;
 
 namespace WhiskerTales.Core
 {
-    /// <summary>
-    /// Centralized constants for Whisker Tales.
-    /// Phase 1 stabilization: add-only file. Existing systems can migrate gradually.
-    /// </summary>
     public static class GameConstants
     {
         public static class Board
@@ -16,6 +12,7 @@ namespace WhiskerTales.Core
             public const int InitialMatchResolveMaxIterations = 100;
             public const int SpecialChainSafetyLimit = 50;
             public const int DefaultMoveLimit = 25;
+            public const float CellSize = 110f;
         }
 
         public static class Economy
@@ -28,6 +25,12 @@ namespace WhiskerTales.Core
             public const int SleepModeHeartsPerSession = 2;
             public const int SleepModeNyangiHeartFullReward = 10;
             public const int SleepModeAnchovyPerHour = 10;
+        }
+
+        // Backward-compatible category requested by v2 review.
+        public static class Currency
+        {
+            public const int ScorePerTile = 100;
         }
 
         public static class Sleep
@@ -64,6 +67,10 @@ namespace WhiskerTales.Core
             public const float TileDropMaxSeconds = 0.34f;
             public const float MatchPopStaggerSeconds = 0.04f;
             public const float MatchBurstFrameSeconds = 0.045f;
+            public const float TileSpawnSeconds = 0.18f;
+            public const float SpecialCreateSeconds = 0.25f;
+            public const float CascadeDelaySeconds = 0.08f;
+            public const float LevelClearStarPopSeconds = 0.18f;
             public const float ModalOpenSeconds = 0.24f;
             public const float ModalCloseSeconds = 0.16f;
             public const float ScreenFadeSeconds = 0.42f;
