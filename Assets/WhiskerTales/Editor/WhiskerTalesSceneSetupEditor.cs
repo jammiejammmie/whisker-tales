@@ -33,6 +33,7 @@ namespace WhiskerTales.EditorTools
             scene.name = "Main";
 
             CreateEventSystem();
+            CreateMainCamera();
 
             GameObject runtimeRoot = new GameObject("WhiskerRuntime");
             runtimeRoot.AddComponent<UIAssetRegistryRuntime>();
@@ -92,6 +93,25 @@ namespace WhiskerTales.EditorTools
             GameObject eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<EventSystem>();
             eventSystem.AddComponent<StandaloneInputModule>();
+        }
+
+        private static void CreateMainCamera()
+        {
+            GameObject go = new GameObject("Main Camera");
+            go.tag = "MainCamera";
+
+            Camera camera = go.AddComponent<Camera>();
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            // #1a1a1a (26/255 = 0.10196...)
+            camera.backgroundColor = new Color(26f / 255f, 26f / 255f, 26f / 255f, 1f);
+            camera.cullingMask = ~0; // Everything
+            camera.orthographic = true;
+            camera.orthographicSize = 5f;
+            camera.nearClipPlane = 0.3f;
+            camera.farClipPlane = 1000f;
+            camera.depth = -1f;
+
+            go.AddComponent<AudioListener>();
         }
 
         private static Canvas CreateCanvas()
