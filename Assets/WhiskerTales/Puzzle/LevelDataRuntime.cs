@@ -20,11 +20,14 @@ namespace WhiskerTales.Puzzle
     [Serializable]
     public sealed class LevelDataRuntimeCollection
     {
+        public int schemaVersion;
         public List<LevelDataRuntime> levels = new List<LevelDataRuntime>();
     }
 
     public sealed class LevelDataRuntimeLoader : MonoBehaviour
     {
+        public const int CurrentSchemaVersion = 1;
+
         [SerializeField] private string resourcePath = "Levels/levels_001_010";
 
         public LevelDataRuntimeCollection Data { get; private set; }
@@ -54,7 +57,16 @@ namespace WhiskerTales.Puzzle
                 return;
             }
 
-            DebugLogger.Info(LogCategory.Puzzle, $"Loaded levels: {Data.levels.Count}");
+            if (Data.schemaVersion <= 0)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, $"Level data missing schemaVersion (resource: {resourcePath}). Treating as legacy.");
+            }
+            else if (Data.schemaVersion > CurrentSchemaVersion)
+            {
+                DebugLogger.Warning(LogCategory.Puzzle, $"Level data schemaVersion {Data.schemaVersion} is newer than supported {CurrentSchemaVersion}. May contain unknown fields.");
+            }
+
+            DebugLogger.Info(LogCategory.Puzzle, $"Loaded levels: {Data.levels.Count} (schemaVersion={Data.schemaVersion})");
         }
 
         public LevelDataRuntime GetLevel(int id)
