@@ -10,7 +10,7 @@ namespace WhiskerTales.UI
     {
         [Header("Background")]
         [SerializeField] private Image backgroundImage;
-        [SerializeField] private CanvasGroup canvasGroup;
+        [SerializeField] private CanvasGroup rootCanvas;
 
         [Header("Logo")]
         [SerializeField] private RectTransform logoRoot;
@@ -29,9 +29,9 @@ namespace WhiskerTales.UI
         {
             base.Awake();
 
-            if (canvasGroup == null)
+            if (rootCanvas == null)
             {
-                canvasGroup = GetComponent<CanvasGroup>();
+                rootCanvas = GetComponent<CanvasGroup>();
             }
         }
 
@@ -39,10 +39,10 @@ namespace WhiskerTales.UI
         {
             base.Show();
 
-            if (canvasGroup != null)
+            if (rootCanvas != null)
             {
-                canvasGroup.alpha = 0f;
-                canvasGroup.DOFade(1f, 0.35f);
+                rootCanvas.alpha = 0f;
+                rootCanvas.DOFade(1f, 0.35f);
             }
 
             if (spinnerRoot != null)

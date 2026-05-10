@@ -7,7 +7,7 @@ namespace WhiskerTales.UI
 {
     public sealed class GameOverScreenController : UIScreenBase
     {
-        [SerializeField] private CanvasGroup canvasGroup;
+        [SerializeField] private CanvasGroup rootCanvas;
         [SerializeField] private RectTransform cardRoot;
 
         [SerializeField] private TMP_Text titleText;
@@ -35,10 +35,10 @@ namespace WhiskerTales.UI
         {
             base.Show();
 
-            if (canvasGroup != null)
+            if (rootCanvas != null)
             {
-                canvasGroup.alpha = 0f;
-                canvasGroup.DOFade(1f, 0.24f);
+                rootCanvas.alpha = 0f;
+                rootCanvas.DOFade(1f, 0.24f);
             }
 
             if (cardRoot != null)
