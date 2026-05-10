@@ -64,14 +64,20 @@ namespace WhiskerTales.Core
         [Conditional("UNITY_EDITOR"), Conditional("DEVELOPMENT_BUILD")]
         public static void Exception(LogCategory category, Exception exception, UnityEngine.Object context = null)
         {
-            if (exception == null || !IsEnabled(category) || LogLevel.Error < MinimumLevel) return;
+            if (exception == null || !IsEnabled(category) || LogLevel.Error < MinimumLevel)
+            {
+                return;
+            }
             UnityEngine.Debug.LogError($"[{category}] Exception: {exception.GetType().Name}: {exception.Message}\n{exception.StackTrace}", context);
         }
 
         [Conditional("UNITY_EDITOR"), Conditional("DEVELOPMENT_BUILD")]
         private static void Log(LogCategory category, LogLevel level, string message, UnityEngine.Object context)
         {
-            if (!IsEnabled(category) || level < MinimumLevel) return;
+            if (!IsEnabled(category) || level < MinimumLevel)
+            {
+                return;
+            }
 
             string formatted = $"[{category}] {message}";
             switch (level)

@@ -66,7 +66,10 @@ namespace WhiskerTales.Puzzle
 
         private void BindBoardEvents()
         {
-            if (eventsBound) return;
+            if (eventsBound)
+            {
+                return;
+            }
             if (board == null)
             {
                 DebugLogger.Warning(LogCategory.UI, "[BoardView] Cannot bind events because board is null", this);
@@ -104,8 +107,14 @@ namespace WhiskerTales.Puzzle
                 DebugLogger.Warning(LogCategory.UI, $"[BoardView] Tile click ignored due to invalid coordinates: ({clicked.x},{clicked.y})", this);
                 return;
             }
-            if (board.IsLevelComplete()) return;
-            if (levelGoal != null && levelGoal.IsMovesExceeded()) return;
+            if (board.IsLevelComplete())
+            {
+                return;
+            }
+            if (levelGoal != null && levelGoal.IsMovesExceeded())
+            {
+                return;
+            }
 
             if (selectedView == null)
             {
@@ -132,20 +141,33 @@ namespace WhiskerTales.Puzzle
                 bool ok = board.TrySwapTiles(sx, sy, clicked.x, clicked.y);
                 // selectedView could have been destroyed by RefreshAll / re-spawn pipeline below;
                 // null-check before SetSelected to guard against rare race after TrySwapTiles.
-                if (selectedView != null) selectedView.SetSelected(false);
+                if (selectedView != null)
+                {
+                    selectedView.SetSelected(false);
+                }
                 selectedView = null;
                 RefreshAll();
 
                 if (!ok)
+                {
                     UpdateStatus("매치 없음 — 스왑 취소");
+                }
                 else
+                {
                     UpdateStatus("");
+                }
             }
             else
             {
-                if (selectedView != null) selectedView.SetSelected(false);
+                if (selectedView != null)
+                {
+                    selectedView.SetSelected(false);
+                }
                 selectedView = clicked;
-                if (clicked != null) clicked.SetSelected(true);
+                if (clicked != null)
+                {
+                    clicked.SetSelected(true);
+                }
             }
         }
 
@@ -163,16 +185,23 @@ namespace WhiskerTales.Puzzle
                 {
                     TileData td = board.GetTile(x, y);
                     TileView view = GetViewSafe(x, y);
-                    if (view != null) view.Refresh(td);
+                    if (view != null)
+                    {
+                        view.Refresh(td);
+                    }
                 }
             }
 
             if (levelGoal != null)
             {
                 if (goalText != null)
+                {
                     goalText.text = $"{levelGoal.GetGoalDescription()}  ({levelGoal.GetProgressDescription()})";
+                }
                 if (movesText != null)
+                {
                     movesText.text = $"이동 {levelGoal.movesUsed}/{levelGoal.moveLimit}";
+                }
             }
         }
 
@@ -201,7 +230,10 @@ namespace WhiskerTales.Puzzle
 
         private void UpdateStatus(string msg)
         {
-            if (statusText != null) statusText.text = msg;
+            if (statusText != null)
+            {
+                statusText.text = msg;
+            }
         }
 
         private bool IsValidPosition(int x, int y)
@@ -231,7 +263,10 @@ namespace WhiskerTales.Puzzle
                 DebugLogger.Warning(LogCategory.UI, $"[BoardView] Ignored SetViewSafe out-of-bounds: ({x},{y})", this);
                 return;
             }
-            if (views == null) views = new TileView[GRID_SIZE, GRID_SIZE];
+            if (views == null)
+            {
+                views = new TileView[GRID_SIZE, GRID_SIZE];
+            }
             views[y, x] = view;
         }
     }
