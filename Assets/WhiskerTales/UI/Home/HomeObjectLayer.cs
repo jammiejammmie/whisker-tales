@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using WhiskerTales.Core;
+using Nav = WhiskerTales.Navigation;
 
 namespace WhiskerTales.UI.Home
 {
@@ -17,6 +18,8 @@ namespace WhiskerTales.UI.Home
     {
         [Header("Data")]
         [SerializeField] private HomeObjectSet set;
+        [Header("Routing (V2 navigator 우선, installer fallback)")]
+        [SerializeField] private Nav.ScreenNavigator navigator;
         [SerializeField] private PhoneVisibleSceneInstaller installer;
 
         [Header("Door Light (SleepMode entry)")]
@@ -28,6 +31,11 @@ namespace WhiskerTales.UI.Home
         private void Awake()
         {
             layerRect = GetComponent<RectTransform>();
+
+            if (navigator == null)
+            {
+                navigator = FindObjectOfType<Nav.ScreenNavigator>();
+            }
 
             if (installer == null)
             {
@@ -178,34 +186,52 @@ namespace WhiskerTales.UI.Home
 
         private void EnterGameplay()
         {
-            if (installer == null)
+            if (navigator != null)
             {
-                DebugLogger.Warning(LogCategory.UI, "HomeObjectLayer.installer not assigned — cannot enter gameplay.");
+                DebugLogger.Info(LogCategory.UI, "Home → Gameplay (V2 navigator)");
+                navigator.Show(Nav.ScreenId.Gameplay);
                 return;
             }
 
-            DebugLogger.Info(LogCategory.UI, "Home → Gameplay (puzzle book)");
-            installer.ShowGameplay();
+            if (installer != null)
+            {
+                DebugLogger.Info(LogCategory.UI, "Home → Gameplay (legacy installer)");
+                installer.ShowGameplay();
+                return;
+            }
+
+            DebugLogger.Warning(LogCategory.UI, "HomeObjectLayer: no navigator/installer for gameplay.");
+        }
+
+        private void EnterSleepMode()
+        {
+            if (navigator != null)
+            {
+                DebugLogger.Info(LogCategory.UI, "Home → SleepMode (V2 navigator)");
+                navigator.Show(Nav.ScreenId.SleepMode);
+                return;
+            }
+
+            if (installer != null)
+            {
+                DebugLogger.Info(LogCategory.UI, "Home → SleepMode (legacy installer)");
+                installer.ShowSleepMode();
+                return;
+            }
+
+            DebugLogger.Warning(LogCategory.UI, "HomeObjectLayer: no navigator/installer for sleep mode.");
         }
 
         private void PlaySleepFlashThenEnter()
         {
-            if (installer == null)
-            {
-                DebugLogger.Warning(LogCategory.UI, "HomeObjectLayer.installer not assigned — cannot enter sleep mode.");
-                return;
-            }
-
             if (sleepFlashOverlay == null)
             {
-                DebugLogger.Info(LogCategory.UI, "Home → SleepMode (no flash overlay)");
-                installer.ShowSleepMode();
+                EnterSleepMode();
                 return;
             }
 
             sleepFlashOverlay.DOKill();
 
-            Color baseColor = sleepFlashOverlay.color;
             float half = UILayoutConstants.HomeSleepFlashSeconds * 0.5f;
 
             sleepFlashOverlay
@@ -214,8 +240,7 @@ namespace WhiskerTales.UI.Home
                 .SetUpdate(true)
                 .OnComplete(() =>
                 {
-                    DebugLogger.Info(LogCategory.UI, "Home → SleepMode (door light)");
-                    installer.ShowSleepMode();
+                    EnterSleepMode();
 
                     sleepFlashOverlay
                         .DOFade(0.01f, half)
