@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c252a158dacdd934fb4f4dd11791831b, type: 3}
+  m_Name: HomeObjectSet
+  m_EditorClassIdentifier: 
+  entries:
+  - id: cushion
+    sprite: {fileID: 0}
+    anchoredPosition: {x: 340, y: 560}
+    size: {x: 280, y: 120}
+    anchorMin: {x: 0.5, y: 0}
+    anchorMax: {x: 0.5, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    interaction: 0
+  - id: teacup
+    sprite: {fileID: 0}
+    anchoredPosition: {x: 360, y: 400}
+    size: {x: 130, y: 130}
+    anchorMin: {x: 0.5, y: 0}
+    anchorMax: {x: 0.5, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    interaction: 0
+  - id: puzzle_book
+    sprite: {fileID: 0}
+    anchoredPosition: {x: 50, y: 520}
+    size: {x: 360, y: 220}
+    anchorMin: {x: 0.5, y: 0}
+    anchorMax: {x: 0.5, y: 0}
+    pivot: {x: 0.5, y: 0.5}
+    interaction: 1

@@ -597,6 +597,15 @@ namespace WhiskerTales.EditorTools
             };
         }
 
+        // 아직 전용 자산이 납품되지 않은 키 → 기존 유사 자산으로 fallback.
+        // 실제 자산이 추가되면 직접 매칭이 우선되므로 이 별칭은 자동 무력화됨.
+        private static readonly Dictionary<string, string> SpriteAliases = new Dictionary<string, string>
+        {
+            { "game_over_bg",  "bg_night_stage3" },
+            { "btn_restore",   "btn_confirm" },
+            { "detox_card_bg", "tutorial_bubble" },
+        };
+
         private static Sprite FindSpriteByKey(string key)
         {
             if (string.IsNullOrEmpty(key) == true)
@@ -604,6 +613,23 @@ namespace WhiskerTales.EditorTools
                 return null;
             }
 
+            Sprite direct = FindSpriteByKeyDirect(key);
+
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            if (SpriteAliases.TryGetValue(key, out string aliasKey) == true)
+            {
+                return FindSpriteByKeyDirect(aliasKey);
+            }
+
+            return null;
+        }
+
+        private static Sprite FindSpriteByKeyDirect(string key)
+        {
             string[] guids = AssetDatabase.FindAssets(key + " t:Sprite", new[] { ArtRoot, "Assets" });
 
             for (int i = 0; i < guids.Length; i++)

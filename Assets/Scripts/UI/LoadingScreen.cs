@@ -1,3 +1,4 @@
+using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -46,7 +47,7 @@ namespace WhiskerTales.UI
             if (pick != null)
             {
                 if (catFaceImage != null && pick.face != null) catFaceImage.sprite = pick.face;
-                if (messageText != null) messageText.text = pick.messageKo;
+                if (messageText != null) messageText.text = StripSupplementaryPlane(pick.messageKo);
             }
 
             gameObject.SetActive(true);
@@ -65,6 +66,23 @@ namespace WhiskerTales.UI
             if (purringSource != null && purringSource.isPlaying) purringSource.Stop();
             gameObject.SetActive(false);
             IsShown = false;
+        }
+
+        private static string StripSupplementaryPlane(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            StringBuilder sb = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (char.IsHighSurrogate(c) && i + 1 < s.Length && char.IsLowSurrogate(s[i + 1]))
+                {
+                    i++;
+                    continue;
+                }
+                sb.Append(c);
+            }
+            return sb.ToString().TrimEnd();
         }
 
         private CatLoadingEntry ResolveEntry(int catId)

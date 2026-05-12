@@ -6,6 +6,15 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/WhiskerTales/_Project/Scenes/Boot_Persistent.unity
+    guid: 6205d4a5bf384874681ba1f50e158219
+  - enabled: 1
+    path: Assets/WhiskerTales/_Project/Scenes/Main_App.unity
+    guid: 81ef1d1740bf6bc4b8dbb6027153208e
+  - enabled: 0
     path: Assets/Scenes/MainScenes.unity
     guid: bd98a814f15d70e4b9fa316bfc5fe8d4
+  - enabled: 1
+    path: Assets/WhiskerTales/Scenes/Main.unity
+    guid: 4831d3880226b3946936dacee5e81830
   m_configObjects: {}

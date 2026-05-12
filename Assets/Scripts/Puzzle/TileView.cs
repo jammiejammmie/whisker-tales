@@ -182,6 +182,7 @@ namespace WhiskerTales.Puzzle
             if (data == null)
             {
                 image.sprite = GetWhiteSprite();
+                Debug.Log($"[TILE] {gameObject.name} sprite={image.sprite?.name ?? "NULL"} color={image.color}");
                 image.color = EmptyColor;
                 return;
             }
@@ -195,12 +196,14 @@ namespace WhiskerTales.Puzzle
             if (s_tileSprites != null && idx >= 0 && idx < s_tileSprites.Length && s_tileSprites[idx] != null)
             {
                 image.sprite = s_tileSprites[idx];
+                Debug.Log($"[TILE] {gameObject.name} sprite={image.sprite?.name ?? "NULL"} color={image.color}");
                 image.color = Color.white;
                 return;
             }
 
             // 미주입 fallback: 흰 sprite + 타일별 색상
             image.sprite = GetWhiteSprite();
+            Debug.Log($"[TILE] {gameObject.name} sprite={image.sprite?.name ?? "NULL"} color={image.color}");
             if (idx >= 0 && idx < TileColors.Length)
             {
                 image.color = TileColors[idx];
