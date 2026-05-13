@@ -112,6 +112,10 @@ namespace WhiskerTales.EditorTools
 
             WireBootstrap(bootstrapGo, navigator, backgroundCanvas, screensCanvas, modalsCanvas, toastsCanvas);
 
+            // V2 home background controllers — must run after canvases exist so Canvas_Background is reachable.
+            // Without this, every V2 build re-creates Main_App from EmptyScene and loses HomeBackground/HomeAmbience.
+            HomeSetupMenus.EnsureHomeBackgroundOnScene(scene);
+
             bool saved = EditorSceneManager.SaveScene(scene, ScenePath);
             EditorSceneManager.CloseScene(scene, true);
 

@@ -93,6 +93,8 @@ namespace WhiskerTales.EditorBuild
 
         private static void EnsureV2ScenesExist()
         {
+            EnsureV2BuildSettings();
+
             if (!File.Exists(SCENE_PATH_V2_BOOT))
             {
                 Debug.Log("[BuildScript:V2] Boot_Persistent.unity missing — invoking builder.");
@@ -132,6 +134,44 @@ namespace WhiskerTales.EditorBuild
             MainAppSceneBuilder.Build();
 
             AssetDatabase.Refresh();
+        }
+
+        // Force EditorBuildSettings.scenes to exactly the two V2 scenes.
+        // Guards Build And Run / Editor Play from picking up V1 scene residue
+        // (e.g. Assets/Scenes/MainScenes.unity). DoBuildV2 itself overrides the
+        // list via BuildPlayerOptions.scenes, so this is for the rest of the editor.
+        private static void EnsureV2BuildSettings()
+        {
+            EditorBuildSettingsScene[] target = new EditorBuildSettingsScene[]
+            {
+                new EditorBuildSettingsScene(SCENE_PATH_V2_BOOT, true),
+                new EditorBuildSettingsScene(SCENE_PATH_V2_MAIN, true),
+            };
+
+            EditorBuildSettingsScene[] current = EditorBuildSettings.scenes;
+            bool needsUpdate = false;
+
+            if (current.Length != target.Length)
+            {
+                needsUpdate = true;
+            }
+            else
+            {
+                for (int i = 0; i < target.Length; i++)
+                {
+                    if (current[i].path != target[i].path || current[i].enabled != target[i].enabled)
+                    {
+                        needsUpdate = true;
+                        break;
+                    }
+                }
+            }
+
+            if (needsUpdate == true)
+            {
+                Debug.Log("[BuildScript:V2] Resetting EditorBuildSettings.scenes to V2 (was " + current.Length + " entries, now " + target.Length + ").");
+                EditorBuildSettings.scenes = target;
+            }
         }
 
         private static BuildReport DoBuild()

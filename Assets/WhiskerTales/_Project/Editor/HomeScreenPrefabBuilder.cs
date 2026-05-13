@@ -105,7 +105,9 @@ namespace WhiskerTales.EditorTools
             HomeScreenController controller = root.AddComponent<HomeScreenController>();
             SetScreenId(controller, ScreenId);
 
-            CreateBackground(rootRect);
+            // V2-ToD: HomeScreen no longer owns the background — Canvas_Background's LayerA/LayerB
+            // (driven by HomeTimeOfDayController) is the visible background. A full-screen opaque
+            // Image here would cover those layers and leave the home view blank.
             CreateLanternGlow(rootRect);
             // 3 petal layers in back-to-front order so far petals render behind mid render behind near.
             CreatePetalLayer(rootRect, "PetalsFar",  size: 60f,  fall: 65f,  interval: 1.2f, maxActive: 12, sway: 50f, alpha: 0.55f);

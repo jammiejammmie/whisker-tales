@@ -174,6 +174,24 @@ namespace WhiskerTales.EditorTools
             Debug.Log("[HomeSetupMenus] Verify Home Background Controllers PASS.");
         }
 
+        // Called from MainAppSceneBuilder during V2 builds so HomeBackground/HomeAmbience
+        // survive scene re-creation. The scene is already open in memory; we do not save it.
+        public static void EnsureHomeBackgroundOnScene(UnityEngine.SceneManagement.Scene scene)
+        {
+            Transform canvasBg = FindCanvasBackground(scene);
+
+            if (canvasBg == null)
+            {
+                Debug.LogWarning("[HomeSetupMenus] EnsureHomeBackgroundOnScene: " + CanvasBackgroundName + " not found in scene " + scene.path);
+                return;
+            }
+
+            HomeTimeOfDayController tod = EnsureTimeOfDayController(canvasBg);
+            BindSpritePools(tod);
+            HomeAmbienceController amb = EnsureAmbienceController(canvasBg, tod);
+            BindAmbienceClips(amb);
+        }
+
         private static bool OpenMainAppScene(out UnityEngine.SceneManagement.Scene scene)
         {
             scene = default(UnityEngine.SceneManagement.Scene);
