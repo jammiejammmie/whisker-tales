@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using WhiskerTales.Runtime;
+using WhiskerTales.UI.Screens;
 
 namespace WhiskerTales.EditorTools
 {
@@ -97,20 +98,27 @@ namespace WhiskerTales.EditorTools
                 SetObjectRef(so, "nightSprite", night);
                 so.ApplyModifiedPropertiesWithoutUndo();
 
+                // HomeScreen의 legacy BG_Background 정리 — 시간대 배경을 담당하는 건 HomeTimeOfDay이므로
+                // 위쪽 Canvas_Screens(sort 100)에서 깔리는 정적 배경이 시간대 배경을 가리지 않도록.
+                bool bgCleared = ClearHomeScreenBackground(scene);
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 AssetDatabase.SaveAssets();
                 EditorUtility.ClearProgressBar();
+
+                string bgNote = bgCleared
+                    ? "✓ HomeScreen.BG_Background 정리 (sprite=null, alpha=0, path 비움)"
+                    : "ℹ HomeScreen.BG_Background 없음 — skip";
 
                 EditorUtility.DisplayDialog(
                     "Setup Time Of Day",
                     "완료\n\n" +
                     "✓ HomeTimeOfDay GameObject (" + CanvasBackgroundName + " 첫 자식, SafeArea 밖)\n" +
                     "✓ LayerA / LayerB Image (stretch full → 화면 끝까지)\n" +
-                    "✓ 4 sprite wired (dawn/day/evening/night)\n\n" +
-                    "주의: HomeScreen의 BG_Background(있다면)을 비활성화하거나 sprite를 비워주세요.\n" +
-                    "Canvas_Screens(sort 100)가 Canvas_Background(sort 0) 위에 그려지므로\n" +
-                    "BG_Background에 불투명 sprite가 남아있으면 시간대 배경이 가려집니다.",
+                    "✓ 4 sprite wired (dawn/day/evening/night)\n" +
+                    bgNote + "\n\n" +
+                    "이제 시간대 배경(Canvas_Background)이 화면 전체를 담당합니다.",
                     "확인");
                 Debug.Log("[Setup Time Of Day] Done.");
             }
@@ -173,6 +181,44 @@ namespace WhiskerTales.EditorTools
                 if (c != null) { return c; }
             }
             return null;
+        }
+
+        private static bool ClearHomeScreenBackground(Scene scene)
+        {
+            HomeScreen home = null;
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                HomeScreen found = roots[i].GetComponentInChildren<HomeScreen>(true);
+                if (found != null) { home = found; break; }
+            }
+
+            if (home == null) { return false; }
+
+            // 1) HomeScreen.backgroundResourcePath = "" → ApplyBackground이 Resources 로드 스킵.
+            SerializedObject so = new SerializedObject(home);
+            SerializedProperty pathProp = so.FindProperty("backgroundResourcePath");
+            if (pathProp != null)
+            {
+                pathProp.stringValue = string.Empty;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            // 2) BG_Background 자식 Image: sprite=null + color.a=0 (벨트+멜빵).
+            Transform bgTransform = home.transform.Find("BG_Background");
+            if (bgTransform == null) { return true; }
+
+            Image bgImg = bgTransform.GetComponent<Image>();
+            if (bgImg != null)
+            {
+                bgImg.sprite = null;
+                Color c = bgImg.color;
+                c.a = 0f;
+                bgImg.color = c;
+                EditorUtility.SetDirty(bgImg);
+            }
+
+            return true;
         }
 
         private static Sprite LoadSprite(string fileNameNoExt)

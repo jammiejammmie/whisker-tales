@@ -16,7 +16,8 @@ namespace WhiskerTales.UI.Screens
     {
         [Header("Background")]
         [SerializeField] private Image backgroundImage;
-        [SerializeField] private string backgroundResourcePath = "Sprites/Backgrounds/bg_home_main";
+        // 비어있으면 auto-load 스킵 — HomeTimeOfDayController가 배경을 담당하는 모드.
+        [SerializeField] private string backgroundResourcePath = "";
 
         protected override void Awake()
         {
@@ -33,6 +34,12 @@ namespace WhiskerTales.UI.Screens
             }
 
             if (backgroundImage.sprite != null)
+            {
+                return;
+            }
+
+            // 빈 path = 의도적으로 정적 배경 비활성 (HomeTimeOfDayController가 담당).
+            if (string.IsNullOrEmpty(backgroundResourcePath) == true)
             {
                 return;
             }

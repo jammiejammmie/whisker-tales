@@ -51,13 +51,9 @@ namespace WhiskerTales.EditorTools
                 }
 
                 EditorUtility.DisplayProgressBar("Setup V2 Home Screen", "Loading assets…", 0.2f);
-                Sprite bgSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Resources/Sprites/Backgrounds/bg_home_main.png");
-
-                if (bgSprite == null)
-                {
-                    Fail("bg_home_main.png Sprite를 로드할 수 없습니다.");
-                    return;
-                }
+                // bg_home_main은 더 이상 사용 안 함 — HomeTimeOfDayController가 Canvas_Background에서 시간대별 배경을 담당.
+                // BG_Background GO는 여전히 만들어두되 sprite 미할당 + alpha=0으로 비활성.
+                Sprite bgSprite = null;
 
                 Sprite catNabi = AssetDatabase.LoadAssetAtPath<Sprite>(CatNabiSpritePath);
                 HomeObjectSet set = AssetDatabase.LoadAssetAtPath<HomeObjectSet>(SetAssetPath);
@@ -82,13 +78,13 @@ namespace WhiskerTales.EditorTools
                     "Setup V2 Home Screen",
                     "완료\n\n" +
                     "✓ HomeScreen GameObject\n" +
-                    "✓ Background (bg_home_main)\n" +
+                    "✓ BG_Background (placeholder, alpha=0 — 시간대 배경이 별도 담당)\n" +
                     "✓ HomeObjectLayer + DoorLightZone + SleepFlashOverlay\n" +
                     "✓ HomeNabi (Body/EarLeft/EyeMask/TouchZone)\n" +
                     "✓ HomeAmbientLayer (LanternGlow/LeafSway)\n" +
                     "✓ TXT_HomeCopy\n" +
                     "✓ ScreenNavigator: initialScreen=Home + screens 등록\n\n" +
-                    "재빌드하면 한옥 배경이 화면에 표시됩니다.",
+                    "다음으로 'Setup Time Of Day'를 실행하세요 (시간대 배경).",
                     "확인");
                 Debug.Log("[Setup V2 Home Screen] Done.");
             }
@@ -169,17 +165,20 @@ namespace WhiskerTales.EditorTools
             // ScreenId 강제
             SetSerializedEnum(home, "screenId", (int)ScreenId.Home);
 
-            // Background
+            // BG_Background — HomeTimeOfDayController가 배경을 담당하므로 비활성 placeholder로 둠.
+            // GO/Image 컴포넌트는 유지(backgroundImage 참조 무결성), sprite=null + alpha=0으로 시각적 무력화.
             GameObject bgGo = EnsureChild(homeGo, "BG_Background");
             StretchFull(bgGo);
             Image bgImg = EnsureComponent<Image>(bgGo);
-            bgImg.sprite = bgSprite;
-            bgImg.color = Color.white;
+            bgImg.sprite = bgSprite; // null
+            bgImg.color = new Color(1f, 1f, 1f, 0f);
             bgImg.preserveAspect = false;
             bgImg.raycastTarget = false;
             bgGo.transform.SetAsFirstSibling();
 
             SetSerializedReference(home, "backgroundImage", bgImg);
+            // backgroundResourcePath = "" → ApplyBackground이 Resources.Load 스킵.
+            SetSerializedString(home, "backgroundResourcePath", string.Empty);
 
             // HomeObjectLayer + 자식
             GameObject layerGo = EnsureChild(homeGo, "HomeObjectLayer");
