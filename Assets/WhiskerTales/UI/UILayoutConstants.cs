@@ -50,6 +50,25 @@ namespace WhiskerTales.UI
 
         public const float HomeBackgroundCrossfadeSeconds = 4f;
 
+        // Stage 3 — Home Nabi quiet presence (HomeNabiPositionSystem).
+        // 의도: "직접 보이는 연출"이 아니라 "어, 뭔가 살아있었던 것 같은데?" 수준.
+        public const float HomeNabiQuietBreathScale = 0.99f;
+        public const float HomeNabiQuietBreathSecondsMin = 4f;
+        public const float HomeNabiQuietBreathSecondsMax = 5f;
+        public const float HomeNabiQuietBlinkIntervalMin = 8f;
+        public const float HomeNabiQuietBlinkIntervalMax = 15f;
+        public const float HomeNabiQuietBlinkCloseSeconds = 0.15f;
+        public const float HomeNabiQuietBlinkOpenSeconds = 0.2f;
+        public const float HomeNabiQuietStretchIntervalMin = 300f;
+        public const float HomeNabiQuietStretchIntervalMax = 600f;
+        public const float HomeNabiQuietStretchChance = 0.25f;
+        public const float HomeNabiQuietStretchHoldSeconds = 1.4f;
+        public const float HomeNabiPositionFadeSeconds = 1.5f;
+        public const float HomeNabiPositionStayMinSeconds = 180f;
+        public const float HomeNabiPositionStayMaxSeconds = 480f;
+        public const float HomeNabiHiddenProbability = 0.25f;
+        public const float HomeNabiFrontalPoseChance = 0.12f;
+
         public static Color FromHex(string hex)
         {
             if (ColorUtility.TryParseHtmlString(hex, out Color color) == true)
