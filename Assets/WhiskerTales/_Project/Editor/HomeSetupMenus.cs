@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 using WhiskerTales.Runtime;
@@ -10,10 +11,16 @@ namespace WhiskerTales.EditorTools
 {
     public static class HomeSetupMenus
     {
-        private const string HomePrefabPath = "Assets/WhiskerTales/_Project/Prefabs/UI/Screens/HomeScreen.prefab";
+        private const string ScenePath = "Assets/WhiskerTales/_Project/Scenes/Main_App.unity";
         private const string HomeArtDir = "Assets/WhiskerTales/Art/01_MAIN_HOME";
         private const string AmbienceDir = "Assets/WhiskerTales/Audio/Ambience";
         private const string NabiDir = "Assets/WhiskerTales/Audio/Nabi";
+
+        private const string CanvasBackgroundName = "Canvas_Background";
+        private const string HomeBackgroundName = "HomeBackground";
+        private const string HomeAmbienceName = "HomeAmbience";
+        private const string LayerAName = "LayerA";
+        private const string LayerBName = "LayerB";
 
         [MenuItem("Whisker Tales/Setup/Setup Time Of Day")]
         public static void SetupTimeOfDay()
@@ -24,26 +31,26 @@ namespace WhiskerTales.EditorTools
                 return;
             }
 
-            GameObject prefabRoot = LoadPrefabContents();
+            UnityEngine.SceneManagement.Scene scene;
 
-            if (prefabRoot == null)
+            if (OpenMainAppScene(out scene) == false)
             {
-                Debug.LogError("[HomeSetupMenus] HomeScreen prefab not found at " + HomePrefabPath);
+                Debug.LogError("[HomeSetupMenus] Setup Time Of Day FAIL — could not open " + ScenePath);
                 return;
             }
 
-            try
+            Transform canvasBg = FindCanvasBackground(scene);
+
+            if (canvasBg == null)
             {
-                HomeTimeOfDayController controller = EnsureTimeOfDayController(prefabRoot);
-                BindSpritePools(controller);
-                SaveAndUnload(prefabRoot);
-                Debug.Log("[HomeSetupMenus] Setup Time Of Day complete.");
+                Debug.LogError("[HomeSetupMenus] Setup Time Of Day FAIL — " + CanvasBackgroundName + " not found in scene.");
+                return;
             }
-            catch (System.Exception e)
-            {
-                PrefabUtility.UnloadPrefabContents(prefabRoot);
-                Debug.LogError("[HomeSetupMenus] Setup Time Of Day failed: " + e.Message);
-            }
+
+            HomeTimeOfDayController controller = EnsureTimeOfDayController(canvasBg);
+            BindSpritePools(controller);
+            SaveScene(scene);
+            Debug.Log("[HomeSetupMenus] Setup Time Of Day PASS — HomeTimeOfDayController attached under " + CanvasBackgroundName + "/" + HomeBackgroundName + ".");
         }
 
         [MenuItem("Whisker Tales/Setup/Setup Ambience Controller")]
@@ -55,67 +62,223 @@ namespace WhiskerTales.EditorTools
                 return;
             }
 
-            GameObject prefabRoot = LoadPrefabContents();
+            UnityEngine.SceneManagement.Scene scene;
 
-            if (prefabRoot == null)
+            if (OpenMainAppScene(out scene) == false)
             {
-                Debug.LogError("[HomeSetupMenus] HomeScreen prefab not found at " + HomePrefabPath);
+                Debug.LogError("[HomeSetupMenus] Setup Ambience Controller FAIL — could not open " + ScenePath);
                 return;
             }
 
-            try
+            Transform canvasBg = FindCanvasBackground(scene);
+
+            if (canvasBg == null)
             {
-                HomeTimeOfDayController tod = EnsureTimeOfDayController(prefabRoot);
-                HomeAmbienceController controller = EnsureAmbienceController(prefabRoot, tod);
-                BindAmbienceClips(controller);
-                SaveAndUnload(prefabRoot);
-                Debug.Log("[HomeSetupMenus] Setup Ambience Controller complete.");
+                Debug.LogError("[HomeSetupMenus] Setup Ambience Controller FAIL — " + CanvasBackgroundName + " not found in scene.");
+                return;
             }
-            catch (System.Exception e)
-            {
-                PrefabUtility.UnloadPrefabContents(prefabRoot);
-                Debug.LogError("[HomeSetupMenus] Setup Ambience Controller failed: " + e.Message);
-            }
+
+            HomeTimeOfDayController tod = EnsureTimeOfDayController(canvasBg);
+            HomeAmbienceController controller = EnsureAmbienceController(canvasBg, tod);
+            BindAmbienceClips(controller);
+            SaveScene(scene);
+            Debug.Log("[HomeSetupMenus] Setup Ambience Controller PASS — HomeAmbienceController attached under " + CanvasBackgroundName + "/" + HomeAmbienceName + ".");
         }
 
-        private static GameObject LoadPrefabContents()
+        [MenuItem("Whisker Tales/Test/Verify Home Background Controllers")]
+        public static void VerifyHomeBackground()
         {
-            if (File.Exists(HomePrefabPath) == false)
+            UnityEngine.SceneManagement.Scene scene;
+
+            if (OpenMainAppScene(out scene) == false)
             {
-                return null;
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — could not open scene at " + ScenePath);
+                return;
             }
 
-            return PrefabUtility.LoadPrefabContents(HomePrefabPath);
+            Transform canvasBg = FindCanvasBackground(scene);
+
+            if (canvasBg == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — " + CanvasBackgroundName + " not found in scene.");
+                return;
+            }
+
+            Transform homeBg = canvasBg.Find(HomeBackgroundName);
+
+            if (homeBg == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — " + HomeBackgroundName + " GameObject missing.");
+                return;
+            }
+
+            HomeTimeOfDayController tod = homeBg.GetComponent<HomeTimeOfDayController>();
+
+            if (tod == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — HomeTimeOfDayController component missing on " + HomeBackgroundName + ".");
+                return;
+            }
+
+            Transform layerA = homeBg.Find(LayerAName);
+            Transform layerB = homeBg.Find(LayerBName);
+
+            if (layerA == null || layerB == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — LayerA/LayerB GameObject missing.");
+                return;
+            }
+
+            if (layerA.GetComponent<Image>() == null || layerB.GetComponent<Image>() == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — LayerA/LayerB Image component missing.");
+                return;
+            }
+
+            SerializedObject todSo = new SerializedObject(tod);
+
+            if (todSo.FindProperty("backgroundA").objectReferenceValue == null ||
+                todSo.FindProperty("backgroundB").objectReferenceValue == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — HomeTimeOfDayController backgroundA/B references unassigned.");
+                return;
+            }
+
+            Transform ambHost = canvasBg.Find(HomeAmbienceName);
+
+            if (ambHost == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — " + HomeAmbienceName + " GameObject missing.");
+                return;
+            }
+
+            HomeAmbienceController amb = ambHost.GetComponent<HomeAmbienceController>();
+
+            if (amb == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — HomeAmbienceController component missing.");
+                return;
+            }
+
+            SerializedObject ambSo = new SerializedObject(amb);
+
+            if (ambSo.FindProperty("timeOfDayController").objectReferenceValue == null ||
+                ambSo.FindProperty("ambienceSource").objectReferenceValue == null ||
+                ambSo.FindProperty("ambienceSourceB").objectReferenceValue == null ||
+                ambSo.FindProperty("nabiSource").objectReferenceValue == null)
+            {
+                Debug.LogError("[HomeSetupMenus] Verify FAIL — HomeAmbienceController references unassigned.");
+                return;
+            }
+
+            Debug.Log("[HomeSetupMenus] Verify Home Background Controllers PASS.");
         }
 
-        private static void SaveAndUnload(GameObject root)
+        private static bool OpenMainAppScene(out UnityEngine.SceneManagement.Scene scene)
         {
-            PrefabUtility.SaveAsPrefabAsset(root, HomePrefabPath);
-            PrefabUtility.UnloadPrefabContents(root);
+            scene = default(UnityEngine.SceneManagement.Scene);
+
+            if (File.Exists(ScenePath) == false)
+            {
+                return false;
+            }
+
+            UnityEngine.SceneManagement.Scene active = EditorSceneManager.GetActiveScene();
+
+            if (active.path == ScenePath && active.isLoaded == true)
+            {
+                scene = active;
+                return true;
+            }
+
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo() == false)
+            {
+                return false;
+            }
+
+            scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            return scene.IsValid();
+        }
+
+        private static void SaveScene(UnityEngine.SceneManagement.Scene scene)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+
+            if (EditorSceneManager.SaveScene(scene) == false)
+            {
+                Debug.LogError("[HomeSetupMenus] Failed to save scene at " + ScenePath);
+                return;
+            }
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
 
-        private static HomeTimeOfDayController EnsureTimeOfDayController(GameObject root)
+        private static Transform FindCanvasBackground(UnityEngine.SceneManagement.Scene scene)
         {
-            HomeTimeOfDayController existing = root.GetComponentInChildren<HomeTimeOfDayController>(true);
+            GameObject[] roots = scene.GetRootGameObjects();
+
+            for (int i = 0; i < roots.Length; i++)
+            {
+                Transform found = FindRecursive(roots[i].transform, CanvasBackgroundName);
+
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        private static Transform FindRecursive(Transform parent, string name)
+        {
+            if (parent.name == name)
+            {
+                return parent;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform result = FindRecursive(parent.GetChild(i), name);
+
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
+        }
+
+        private static HomeTimeOfDayController EnsureTimeOfDayController(Transform canvasBg)
+        {
+            Transform existing = canvasBg.Find(HomeBackgroundName);
+            GameObject host;
 
             if (existing != null)
             {
-                EnsureBackgroundImages(existing);
-                return existing;
+                host = existing.gameObject;
+            }
+            else
+            {
+                host = new GameObject(HomeBackgroundName, typeof(RectTransform));
+                host.transform.SetParent(canvasBg, false);
+                RectTransform rect = (RectTransform)host.transform;
+                rect.anchorMin = Vector2.zero;
+                rect.anchorMax = Vector2.one;
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+                host.transform.SetAsFirstSibling();
             }
 
-            GameObject host = new GameObject("TimeOfDay", typeof(RectTransform));
-            host.transform.SetParent(root.transform, false);
-            RectTransform rect = host.GetComponent<RectTransform>();
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            host.transform.SetAsFirstSibling();
+            HomeTimeOfDayController controller = host.GetComponent<HomeTimeOfDayController>();
 
-            HomeTimeOfDayController controller = host.AddComponent<HomeTimeOfDayController>();
+            if (controller == null)
+            {
+                controller = host.AddComponent<HomeTimeOfDayController>();
+            }
+
             EnsureBackgroundImages(controller);
             return controller;
         }
@@ -126,63 +289,81 @@ namespace WhiskerTales.EditorTools
             SerializedProperty propA = so.FindProperty("backgroundA");
             SerializedProperty propB = so.FindProperty("backgroundB");
 
-            Image imgA = propA.objectReferenceValue as Image;
-            Image imgB = propB.objectReferenceValue as Image;
+            Image imgA = EnsureLayerImage(controller.transform, LayerAName, 0);
+            Image imgB = EnsureLayerImage(controller.transform, LayerBName, 1);
 
-            if (imgA == null)
-            {
-                imgA = CreateBackgroundImage(controller.transform, "Background_A");
-                propA.objectReferenceValue = imgA;
-            }
-
-            if (imgB == null)
-            {
-                imgB = CreateBackgroundImage(controller.transform, "Background_B");
-                propB.objectReferenceValue = imgB;
-            }
-
-            imgA.transform.SetSiblingIndex(0);
-            imgB.transform.SetSiblingIndex(1);
+            propA.objectReferenceValue = imgA;
+            propB.objectReferenceValue = imgB;
 
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static Image CreateBackgroundImage(Transform parent, string name)
+        private static Image EnsureLayerImage(Transform parent, string name, int siblingIndex)
         {
-            GameObject go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            go.transform.SetParent(parent, false);
-            RectTransform rect = go.GetComponent<RectTransform>();
+            Transform existing = parent.Find(name);
+            GameObject go;
+
+            if (existing != null)
+            {
+                go = existing.gameObject;
+            }
+            else
+            {
+                go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                go.transform.SetParent(parent, false);
+            }
+
+            RectTransform rect = (RectTransform)go.transform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+            rect.SetSiblingIndex(siblingIndex);
+
             Image image = go.GetComponent<Image>();
+
+            if (image == null)
+            {
+                image = go.AddComponent<Image>();
+            }
+
             image.preserveAspect = false;
             image.raycastTarget = false;
             image.color = Color.white;
             return image;
         }
 
-        private static HomeAmbienceController EnsureAmbienceController(GameObject root, HomeTimeOfDayController tod)
+        private static HomeAmbienceController EnsureAmbienceController(Transform canvasBg, HomeTimeOfDayController tod)
         {
-            HomeAmbienceController existing = root.GetComponentInChildren<HomeAmbienceController>(true);
+            Transform existing = canvasBg.Find(HomeAmbienceName);
+            GameObject host;
 
-            if (existing == null)
+            if (existing != null)
             {
-                GameObject host = new GameObject("Ambience", typeof(RectTransform));
-                host.transform.SetParent(root.transform, false);
-                existing = host.AddComponent<HomeAmbienceController>();
+                host = existing.gameObject;
+            }
+            else
+            {
+                host = new GameObject(HomeAmbienceName);
+                host.transform.SetParent(canvasBg, false);
             }
 
-            SerializedObject so = new SerializedObject(existing);
+            HomeAmbienceController controller = host.GetComponent<HomeAmbienceController>();
+
+            if (controller == null)
+            {
+                controller = host.AddComponent<HomeAmbienceController>();
+            }
+
+            SerializedObject so = new SerializedObject(controller);
             so.FindProperty("timeOfDayController").objectReferenceValue = tod;
 
-            EnsureAudioSource(existing.transform, "AmbienceSource_A", so, "ambienceSource");
-            EnsureAudioSource(existing.transform, "AmbienceSource_B", so, "ambienceSourceB");
-            EnsureAudioSource(existing.transform, "NabiSource", so, "nabiSource");
+            EnsureAudioSource(host.transform, "AmbienceSource_A", so, "ambienceSource");
+            EnsureAudioSource(host.transform, "AmbienceSource_B", so, "ambienceSourceB");
+            EnsureAudioSource(host.transform, "NabiSource", so, "nabiSource");
 
             so.ApplyModifiedPropertiesWithoutUndo();
-            return existing;
+            return controller;
         }
 
         private static void EnsureAudioSource(Transform parent, string name, SerializedObject so, string propertyName)
@@ -190,7 +371,7 @@ namespace WhiskerTales.EditorTools
             SerializedProperty prop = so.FindProperty(propertyName);
             AudioSource source = prop.objectReferenceValue as AudioSource;
 
-            if (source != null)
+            if (source != null && source.transform.parent == parent)
             {
                 return;
             }

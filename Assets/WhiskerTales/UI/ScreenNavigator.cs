@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WhiskerTales.Core;
@@ -11,6 +12,21 @@ namespace WhiskerTales.UI
 
         private readonly Dictionary<string, UIScreenBase> screenMap = new Dictionary<string, UIScreenBase>();
         private UIScreenBase currentScreen;
+
+        // V2-16: TabBarController subscribes to flip active-tint and toggle visibility per screen.
+        public event Action<string> ScreenShown;
+
+        public string CurrentScreenId
+        {
+            get
+            {
+                if (currentScreen == null)
+                {
+                    return null;
+                }
+                return currentScreen.ScreenId;
+            }
+        }
 
         private void Awake()
         {
@@ -50,6 +66,13 @@ namespace WhiskerTales.UI
 
             currentScreen = next;
             currentScreen.Show(instant);
+
+            Action<string> handler = ScreenShown;
+
+            if (handler != null)
+            {
+                handler.Invoke(screenId);
+            }
         }
 
         private void BuildMap()

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using WhiskerTales.Assets;
 using WhiskerTales.Feel;
 using WhiskerTales.Pooling;
@@ -9,6 +10,14 @@ namespace WhiskerTales.Core
 {
     public sealed class SystemsBootstrap : MonoBehaviour
     {
+        // V2 entry scenes opt out of auto-init. MainAppBootstrap calls EnsureInitialized() manually
+        // so service lifetime is owned by GameRuntime (DontDestroyOnLoad in Boot_Persistent).
+        private static readonly string[] V2EntryScenes = new string[]
+        {
+            "Boot_Persistent",
+            "Main_App"
+        };
+
         private static SystemsBootstrap instance;
         private SaveService saveService;
         private IAssetProvider assetProvider;
@@ -23,8 +32,31 @@ namespace WhiskerTales.Core
             get { return instance != null ? instance.assetProvider : null; }
         }
 
+        public static bool IsInitialized
+        {
+            get { return instance != null; }
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void InitializeBeforeSceneLoad()
+        {
+            if (instance != null)
+            {
+                return;
+            }
+
+            if (IsV2BootEntryScene() == true)
+            {
+                DebugLogger.Info(LogCategory.UI, "[SystemsBootstrap] Auto-init skipped: V2 entry scene at build index 0. MainAppBootstrap will call EnsureInitialized().");
+                return;
+            }
+
+            EnsureInitialized();
+        }
+
+        // V2 (MainAppBootstrap) calls this from its Awake to opt in explicitly.
+        // V1 paths reach the same code via InitializeBeforeSceneLoad.
+        public static void EnsureInitialized()
         {
             if (instance != null)
             {
@@ -35,6 +67,35 @@ namespace WhiskerTales.Core
             DontDestroyOnLoad(root);
             instance = root.AddComponent<SystemsBootstrap>();
             instance.InitializeSystems(root);
+        }
+
+        private static bool IsV2BootEntryScene()
+        {
+            int sceneCount = SceneManager.sceneCountInBuildSettings;
+
+            if (sceneCount <= 0)
+            {
+                return false;
+            }
+
+            string firstScenePath = SceneUtility.GetScenePathByBuildIndex(0);
+
+            if (string.IsNullOrEmpty(firstScenePath) == true)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < V2EntryScenes.Length; i++)
+            {
+                string marker = "/" + V2EntryScenes[i] + ".unity";
+
+                if (firstScenePath.EndsWith(marker) == true)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void InitializeSystems(GameObject root)
