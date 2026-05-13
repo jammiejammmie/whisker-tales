@@ -20,6 +20,8 @@ namespace WhiskerTales.EditorTools
 
         private const string ContainerName = "HomeNabiPositionSystem";
         private const string BodyName = "NabiBody";
+        private const string CatName = "Cat";
+        private const string ShadowName = "Shadow";
         private const string EyeMaskName = "EyeMask";
         private const string AnchorsName = "Anchors";
 
@@ -29,24 +31,27 @@ namespace WhiskerTales.EditorTools
             public string id;
             public Vector2 pos;
             public HomeNabiPositionSystem.PoseId pose;
+            public float perspective;
         }
 
-        // 하단 anchor 3개(cushion/maru_end/puzzle_book)를 y=-550으로 상향 — 카피(탭바 위 y≈210)와
-        // 본체(280×320 pivot center) 하단이 겹치지 않게. body_bottom = (960 + y) - 160 ≥ 카피 top.
+        // 가까움(maru_end/cushion)=1.0, 중간(puzzle_book/door_front/sunlight)=0.85, 멀리(eave/yard/lantern)=0.65.
         private static readonly AnchorSpec[] DefaultAnchors = new AnchorSpec[]
         {
-            new AnchorSpec { id = "pos_maru_end",    pos = new Vector2( 350f, -550f), pose = HomeNabiPositionSystem.PoseId.Random },
-            new AnchorSpec { id = "pos_puzzle_book", pos = new Vector2(-250f, -550f), pose = HomeNabiPositionSystem.PoseId.Random },
-            new AnchorSpec { id = "pos_cushion",     pos = new Vector2(   0f, -550f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf },
-            new AnchorSpec { id = "pos_door_front",  pos = new Vector2( 400f, -300f), pose = HomeNabiPositionSystem.PoseId.IdleSit },
-            new AnchorSpec { id = "pos_sunlight",    pos = new Vector2(-150f, -450f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf },
-            new AnchorSpec { id = "pos_eave",        pos = new Vector2(-300f,  200f), pose = HomeNabiPositionSystem.PoseId.Random },
-            new AnchorSpec { id = "pos_yard_view",   pos = new Vector2( 200f, -100f), pose = HomeNabiPositionSystem.PoseId.Random },
-            new AnchorSpec { id = "pos_lantern",     pos = new Vector2(-350f,  100f), pose = HomeNabiPositionSystem.PoseId.Random }
+            new AnchorSpec { id = "pos_maru_end",    pos = new Vector2( 350f, -550f), pose = HomeNabiPositionSystem.PoseId.Random,     perspective = 1.00f },
+            new AnchorSpec { id = "pos_puzzle_book", pos = new Vector2(-250f, -550f), pose = HomeNabiPositionSystem.PoseId.Random,     perspective = 0.85f },
+            new AnchorSpec { id = "pos_cushion",     pos = new Vector2(   0f, -550f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf, perspective = 1.00f },
+            new AnchorSpec { id = "pos_door_front",  pos = new Vector2( 400f, -300f), pose = HomeNabiPositionSystem.PoseId.IdleSit,    perspective = 0.85f },
+            new AnchorSpec { id = "pos_sunlight",    pos = new Vector2(-150f, -450f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf, perspective = 0.85f },
+            new AnchorSpec { id = "pos_eave",        pos = new Vector2(-300f,  200f), pose = HomeNabiPositionSystem.PoseId.Random,     perspective = 0.65f },
+            new AnchorSpec { id = "pos_yard_view",   pos = new Vector2( 200f, -100f), pose = HomeNabiPositionSystem.PoseId.Random,     perspective = 0.65f },
+            new AnchorSpec { id = "pos_lantern",     pos = new Vector2(-350f,  100f), pose = HomeNabiPositionSystem.PoseId.Random,     perspective = 0.65f }
         };
 
-        private const float BodyWidth = 280f;
-        private const float BodyHeight = 320f;
+        // 기본 크기 7% 축소: 280×320 → 260×298.
+        private const float BodyWidth = 260f;
+        private const float BodyHeight = 298f;
+        private const float ShadowWidth = 180f;
+        private const float ShadowHeight = 40f;
 
         [MenuItem("Whisker Tales/Setup/Setup Nabi Position System")]
         public static void Run()
@@ -87,7 +92,7 @@ namespace WhiskerTales.EditorTools
 
                 HomeNabiPositionSystem system = EnsureComponent<HomeNabiPositionSystem>(containerGo);
 
-                // Body (RectTransform + CanvasGroup + Image)
+                // NabiBody = 컨테이너 (RectTransform + CanvasGroup, Image 없음)
                 GameObject bodyGo = EnsureChild(containerGo, BodyName);
                 ConfigureRect(bodyGo,
                     anchorMin: new Vector2(0.5f, 0.5f),
@@ -99,13 +104,37 @@ namespace WhiskerTales.EditorTools
                 bodyCg.alpha = 1f;
                 bodyCg.blocksRaycasts = false;
                 bodyCg.interactable = false;
-                Image bodyImg = EnsureComponent<Image>(bodyGo);
+
+                // 마이그레이션: 이전 구조에서 NabiBody에 직접 붙어있던 Image를 제거 (이제 Cat 자식이 cat sprite 담당).
+                Image legacyImg = bodyGo.GetComponent<Image>();
+                if (legacyImg != null)
+                {
+                    Object.DestroyImmediate(legacyImg);
+                }
+
+                // Shadow (RectTransform at bottom, Image black soft ellipse)
+                GameObject shadowGo = EnsureChild(bodyGo, ShadowName);
+                ConfigureRect(shadowGo,
+                    anchorMin: new Vector2(0.5f, 0f),
+                    anchorMax: new Vector2(0.5f, 0f),
+                    pivot: new Vector2(0.5f, 0.5f),
+                    pos: new Vector2(0f, 0f),
+                    size: new Vector2(ShadowWidth, ShadowHeight));
+                Image shadowImg = EnsureComponent<Image>(shadowGo);
+                // sprite는 런타임에 절차 생성됨 — setup에서는 null로 둠.
+                shadowImg.color = new Color(0f, 0f, 0f, 0.25f);
+                shadowImg.raycastTarget = false;
+
+                // Cat (RectTransform stretch, Image with cat sprite)
+                GameObject catGo = EnsureChild(bodyGo, CatName);
+                StretchFull(catGo);
+                Image bodyImg = EnsureComponent<Image>(catGo);
                 bodyImg.sprite = sleepyLoaf;
                 bodyImg.color = Color.white;
                 bodyImg.preserveAspect = true;
                 bodyImg.raycastTarget = false;
 
-                // EyeMask (RectTransform stretch inside body + CanvasGroup + black Image)
+                // EyeMask (RectTransform stretch + CanvasGroup + black Image)
                 GameObject eyeGo = EnsureChild(bodyGo, EyeMaskName);
                 StretchFull(eyeGo);
                 CanvasGroup eyeCg = EnsureComponent<CanvasGroup>(eyeGo);
@@ -116,6 +145,11 @@ namespace WhiskerTales.EditorTools
                 eyeImg.color = new Color(0f, 0f, 0f, 0.55f);
                 eyeImg.sprite = null;
                 eyeImg.raycastTarget = false;
+
+                // 렌더 순서: Shadow(뒤) → Cat → EyeMask(앞).
+                shadowGo.transform.SetSiblingIndex(0);
+                catGo.transform.SetSiblingIndex(1);
+                eyeGo.transform.SetSiblingIndex(2);
 
                 EditorUtility.DisplayProgressBar("Setup Nabi Position System", "Creating anchors…", 0.75f);
 
@@ -139,11 +173,15 @@ namespace WhiskerTales.EditorTools
 
                 EditorUtility.DisplayProgressBar("Setup Nabi Position System", "Wiring serialized fields…", 0.9f);
 
+                HomeTimeOfDayController todController = FindTimeOfDayController(scene);
+
                 SerializedObject so = new SerializedObject(system);
                 SetObjectRef(so, "body", bodyGo.GetComponent<RectTransform>());
                 SetObjectRef(so, "bodyImage", bodyImg);
                 SetObjectRef(so, "bodyCanvasGroup", bodyCg);
                 SetObjectRef(so, "eyeMask", eyeCg);
+                SetObjectRef(so, "shadowImage", shadowImg);
+                SetObjectRef(so, "timeOfDayController", todController);
                 SetObjectRef(so, "poseIdleSit", idleSit);
                 SetObjectRef(so, "poseSleepyLoaf", sleepyLoaf);
                 SetObjectRef(so, "poseStretchSmall", stretchSmall);
@@ -162,6 +200,7 @@ namespace WhiskerTales.EditorTools
                     elem.FindPropertyRelative("id").stringValue = DefaultAnchors[i].id;
                     elem.FindPropertyRelative("anchor").objectReferenceValue = anchorRects[i];
                     elem.FindPropertyRelative("recommendedPose").enumValueIndex = (int)DefaultAnchors[i].pose;
+                    elem.FindPropertyRelative("perspectiveScale").floatValue = DefaultAnchors[i].perspective;
                 }
 
                 so.ApplyModifiedPropertiesWithoutUndo();
@@ -175,16 +214,23 @@ namespace WhiskerTales.EditorTools
                 AssetDatabase.SaveAssets();
                 EditorUtility.ClearProgressBar();
 
+                string todNote = todController != null
+                    ? "✓ TimeOfDayController 자동 연결 — 시간대별 tint 활성"
+                    : "⚠ HomeTimeOfDayController를 씬에서 못 찾음 — 시간대 tint 비활성 (Setup Time Of Day 먼저 실행)";
+
                 EditorUtility.DisplayDialog(
                     "Setup Nabi Position System",
                     "완료\n\n" +
                     "✓ HomeNabiPositionSystem GameObject (HomeScreen 자식)\n" +
-                    "✓ NabiBody (CanvasGroup + Image, 280×320, sleepyLoaf 기본 sprite)\n" +
-                    "✓ EyeMask (alpha=0, 블링크용)\n" +
-                    "✓ Anchors × 8 (한옥 배경 기본 좌표)\n" +
-                    "✓ 3 sprite wired (idle_sit / sleepy_loaf / stretch_small)\n\n" +
-                    "Anchor 위치는 한옥 배경 가정 기본값입니다.\n" +
-                    "Scene 뷰에서 각 pos_* 를 선택해 실제 배경 위치에 맞게 조정하세요.",
+                    "✓ NabiBody 컨테이너 260×298 (이전 대비 7% 축소)\n" +
+                    "  └ Shadow (검정 타원, 런타임 절차 생성)\n" +
+                    "  └ Cat (sleepyLoaf 기본 sprite, tint 대상)\n" +
+                    "  └ EyeMask (alpha=0, 블링크용)\n" +
+                    "✓ Anchors × 8 (좌표 + perspectiveScale: 가까움 1.0 / 중간 0.85 / 멀리 0.65)\n" +
+                    "✓ 3 sprite wired (idle_sit / sleepy_loaf / stretch_small)\n" +
+                    todNote + "\n\n" +
+                    "Scene 뷰에서 각 pos_*를 실제 배경 위치에 맞게 조정하세요.\n" +
+                    "perspectiveScale도 Inspector에서 위치별로 미세조정 가능.",
                     "확인");
                 Debug.Log("[Setup Nabi Position System] Done.");
             }
@@ -235,6 +281,17 @@ namespace WhiskerTales.EditorTools
             {
                 HomeScreen home = roots[i].GetComponentInChildren<HomeScreen>(true);
                 if (home != null) { return home; }
+            }
+            return null;
+        }
+
+        private static HomeTimeOfDayController FindTimeOfDayController(Scene scene)
+        {
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                HomeTimeOfDayController c = roots[i].GetComponentInChildren<HomeTimeOfDayController>(true);
+                if (c != null) { return c; }
             }
             return null;
         }

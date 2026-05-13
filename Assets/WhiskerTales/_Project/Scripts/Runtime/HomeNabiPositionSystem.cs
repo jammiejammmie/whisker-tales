@@ -8,7 +8,7 @@ using WhiskerTales.UI;
 namespace WhiskerTales.Runtime
 {
     /// <summary>
-    /// "원래 이 집에 살고 있는 고양이" — 위치 이동 + 정적 ambient 애니메이션.
+    /// "원래 이 집에 살고 있는 고양이" — 위치 이동 + 정적 ambient + 공간 통합 (원근/그림자/시간대 tint).
     /// 모든 톤은 "보이는 연출"이 아니라 "어, 뭔가 살아있었던 것 같은데?" 수준.
     /// 끄면 약간 허전한 정도 — 게임 idle animation 느낌 금지.
     /// </summary>
@@ -30,22 +30,33 @@ namespace WhiskerTales.Runtime
             public RectTransform anchor;
             [Tooltip("이 위치에서 추천하는 포즈. Random이면 가중 랜덤 (정면 응시 빈도 낮음).")]
             public PoseId recommendedPose;
+            [Tooltip("원근 스케일. 가까움=1.0, 중간=0.85, 멀리=0.65. 0이면 1.0으로 처리 (마이그레이션 안전).")]
+            [Range(0.3f, 1.2f)]
+            public float perspectiveScale;
         }
 
         [Header("Body")]
-        [Tooltip("이동할 본체 RectTransform — anchoredPosition 또는 worldPosition을 anchor에 맞춤.")]
+        [Tooltip("이동/스케일이 적용되는 컨테이너 RectTransform.")]
         [SerializeField] private RectTransform body;
-        [Tooltip("body의 sprite — 포즈에 따라 교체.")]
+        [Tooltip("body의 자식인 Cat의 Image — 포즈 sprite 교체 + 시간대 tint.")]
         [SerializeField] private Image bodyImage;
-        [Tooltip("body 전체 페이드용 CanvasGroup (페이드 인/아웃 + hidden 상태).")]
+        [Tooltip("body 전체 페이드용 CanvasGroup.")]
         [SerializeField] private CanvasGroup bodyCanvasGroup;
         [Tooltip("눈 깜빡임용 마스크 CanvasGroup. 비워두면 blink 비활성.")]
         [SerializeField] private CanvasGroup eyeMask;
+
+        [Header("Shadow")]
+        [Tooltip("body 하단 타원 그림자 Image. sprite 미할당 시 첫 OnEnable에서 절차적 soft ellipse 생성.")]
+        [SerializeField] private Image shadowImage;
 
         [Header("Sprites")]
         [SerializeField] private Sprite poseIdleSit;
         [SerializeField] private Sprite poseSleepyLoaf;
         [SerializeField] private Sprite poseStretchSmall;
+
+        [Header("Time-of-Day Integration")]
+        [Tooltip("시간대 tint를 구독할 controller. 비워두면 tint 비활성.")]
+        [SerializeField] private HomeTimeOfDayController timeOfDayController;
 
         [Header("Positions")]
         [Tooltip("8개 가시 위치. pos_hidden은 별도 상태로 처리 — 배열에 포함하지 않음.")]
@@ -59,6 +70,7 @@ namespace WhiskerTales.Runtime
 
         private State currentState;
         private int currentVisibleIndex = -1;
+        private float currentPerspectiveScale = 1f;
         private PoseId currentPose;
         private Tween breathTween;
         private Tween blinkTween;
@@ -66,19 +78,22 @@ namespace WhiskerTales.Runtime
         private Tween moveTween;
         private Tween moveScheduleTween;
         private Tween stretchScheduleTween;
+        private Tween tintTween;
+
+        private static Sprite cachedShadowSprite;
 
         private void Reset()
         {
             positions = new PositionAnchor[]
             {
-                new PositionAnchor { id = "pos_maru_end",    recommendedPose = PoseId.Random },
-                new PositionAnchor { id = "pos_puzzle_book", recommendedPose = PoseId.Random },
-                new PositionAnchor { id = "pos_cushion",     recommendedPose = PoseId.SleepyLoaf },
-                new PositionAnchor { id = "pos_door_front",  recommendedPose = PoseId.IdleSit },
-                new PositionAnchor { id = "pos_sunlight",    recommendedPose = PoseId.SleepyLoaf },
-                new PositionAnchor { id = "pos_eave",        recommendedPose = PoseId.Random },
-                new PositionAnchor { id = "pos_yard_view",   recommendedPose = PoseId.Random },
-                new PositionAnchor { id = "pos_lantern",     recommendedPose = PoseId.Random }
+                new PositionAnchor { id = "pos_maru_end",    recommendedPose = PoseId.Random,     perspectiveScale = 1.00f },
+                new PositionAnchor { id = "pos_puzzle_book", recommendedPose = PoseId.Random,     perspectiveScale = 0.85f },
+                new PositionAnchor { id = "pos_cushion",     recommendedPose = PoseId.SleepyLoaf, perspectiveScale = 1.00f },
+                new PositionAnchor { id = "pos_door_front",  recommendedPose = PoseId.IdleSit,    perspectiveScale = 0.85f },
+                new PositionAnchor { id = "pos_sunlight",    recommendedPose = PoseId.SleepyLoaf, perspectiveScale = 0.85f },
+                new PositionAnchor { id = "pos_eave",        recommendedPose = PoseId.Random,     perspectiveScale = 0.65f },
+                new PositionAnchor { id = "pos_yard_view",   recommendedPose = PoseId.Random,     perspectiveScale = 0.65f },
+                new PositionAnchor { id = "pos_lantern",     recommendedPose = PoseId.Random,     perspectiveScale = 0.65f }
             };
         }
 
@@ -89,8 +104,11 @@ namespace WhiskerTales.Runtime
                 return;
             }
 
+            EnsureShadowSprite();
+            SubscribeTimeOfDay();
             EnterInitialPosition();
-            StartBreathing();
+            ApplyInitialTint();
+            StartBreathing(currentPerspectiveScale);
             ScheduleNextBlink();
             ScheduleNextStretch();
             ScheduleNextMove();
@@ -98,6 +116,7 @@ namespace WhiskerTales.Runtime
 
         private void OnDisable()
         {
+            UnsubscribeTimeOfDay();
             KillAll();
         }
 
@@ -126,12 +145,14 @@ namespace WhiskerTales.Runtime
             moveTween?.Kill();
             moveScheduleTween?.Kill();
             stretchScheduleTween?.Kill();
+            tintTween?.Kill();
             breathTween = null;
             blinkTween = null;
             stretchTween = null;
             moveTween = null;
             moveScheduleTween = null;
             stretchScheduleTween = null;
+            tintTween = null;
         }
 
         // ---------- Position movement ----------
@@ -144,17 +165,22 @@ namespace WhiskerTales.Runtime
             {
                 currentState = State.Hidden;
                 bodyCanvasGroup.alpha = 0f;
+                currentPerspectiveScale = UILayoutConstants.HomeNabiPerspectiveDefault;
+                ApplyScaleAndShadow(currentPerspectiveScale);
                 return;
             }
 
             SnapToAnchor(idx);
+            float ps = EffectivePerspectiveScale(positions[idx].perspectiveScale);
+            currentPerspectiveScale = ps;
+            ApplyScaleAndShadow(ps);
             currentPose = ResolvePose(positions[idx].recommendedPose);
             bodyImage.sprite = ResolveSprite(currentPose);
             currentVisibleIndex = idx;
             currentState = State.Visible;
             bodyCanvasGroup.alpha = 1f;
 
-            DebugLogger.Info(LogCategory.UI, "HomeNabiPositionSystem: initial pos=" + positions[idx].id + " pose=" + currentPose);
+            DebugLogger.Info(LogCategory.UI, "HomeNabiPositionSystem: initial pos=" + positions[idx].id + " pose=" + currentPose + " scale=" + ps);
         }
 
         private void ScheduleNextMove()
@@ -182,6 +208,7 @@ namespace WhiskerTales.Runtime
                     .SetEase(Ease.InOutSine));
             }
 
+            // 페이드아웃 종료 시점(alpha=0)에 위치/sprite/스케일/그림자 스냅 — 시각적으로 보이지 않음.
             seq.AppendCallback(() =>
             {
                 if (nextHidden == true)
@@ -199,11 +226,15 @@ namespace WhiskerTales.Runtime
                 }
 
                 SnapToAnchor(idx);
+                float ps = EffectivePerspectiveScale(positions[idx].perspectiveScale);
+                currentPerspectiveScale = ps;
+                ApplyScaleAndShadow(ps);
+                RestartBreathing(ps);
                 currentPose = ResolvePose(positions[idx].recommendedPose);
                 bodyImage.sprite = ResolveSprite(currentPose);
                 currentVisibleIndex = idx;
                 currentState = State.Visible;
-                DebugLogger.Info(LogCategory.UI, "HomeNabiPositionSystem: -> " + positions[idx].id + " pose=" + currentPose);
+                DebugLogger.Info(LogCategory.UI, "HomeNabiPositionSystem: -> " + positions[idx].id + " pose=" + currentPose + " scale=" + ps);
             });
 
             if (nextHidden == false)
@@ -219,7 +250,6 @@ namespace WhiskerTales.Runtime
 
         private bool ShouldGoHiddenNext()
         {
-            // 연속 hidden 금지 — 현재 hidden이면 다음은 무조건 visible로.
             if (currentState == State.Hidden)
             {
                 return false;
@@ -245,7 +275,6 @@ namespace WhiskerTales.Runtime
 
             if (candidates.Count == 0)
             {
-                // 후보가 없으면 (anchor가 1개뿐인 케이스) 현재 위치 재사용 허용.
                 for (int i = 0; i < positions.Length; i++)
                 {
                     if (positions[i].anchor != null) { return i; }
@@ -261,8 +290,6 @@ namespace WhiskerTales.Runtime
             RectTransform anchor = positions[idx].anchor;
             if (anchor == null) { return; }
 
-            // anchor가 같은 부모면 anchoredPosition을 직접 복사 (가장 정확).
-            // 부모가 다르면 worldPosition으로 복사.
             if (body.parent == anchor.parent)
             {
                 body.anchoredPosition = anchor.anchoredPosition;
@@ -270,6 +297,90 @@ namespace WhiskerTales.Runtime
             else
             {
                 body.position = anchor.position;
+            }
+        }
+
+        // ---------- Perspective scale + shadow ----------
+
+        private static float EffectivePerspectiveScale(float raw)
+        {
+            // 마이그레이션 안전: 0(직렬화 기본값) → 1.0 처리.
+            return raw <= 0f ? UILayoutConstants.HomeNabiPerspectiveDefault : raw;
+        }
+
+        private void ApplyScaleAndShadow(float ps)
+        {
+            if (body != null)
+            {
+                body.localScale = Vector3.one * ps;
+            }
+
+            if (shadowImage != null)
+            {
+                Color c = shadowImage.color;
+                // 멀리 갈수록 흐릿하게 — alpha를 perspective에 비례 감쇠.
+                c.a = UILayoutConstants.HomeNabiShadowBaseAlpha * ps;
+                shadowImage.color = c;
+                // 크기는 body.localScale로 자동 (shadow가 body 자식이므로).
+            }
+        }
+
+        // ---------- Time-of-day tint ----------
+
+        private void SubscribeTimeOfDay()
+        {
+            if (timeOfDayController == null) { return; }
+            timeOfDayController.TimeOfDayChanged += OnTimeOfDayChanged;
+        }
+
+        private void UnsubscribeTimeOfDay()
+        {
+            if (timeOfDayController == null) { return; }
+            timeOfDayController.TimeOfDayChanged -= OnTimeOfDayChanged;
+        }
+
+        private void ApplyInitialTint()
+        {
+            if (timeOfDayController == null || bodyImage == null) { return; }
+
+            Color target = ResolveTint(timeOfDayController.CurrentTimeOfDay);
+            // 초기 진입은 페이드 없이 즉시 — 첫 프레임 깜빡임 방지.
+            Color cur = bodyImage.color;
+            target.a = cur.a;
+            bodyImage.color = target;
+        }
+
+        private void OnTimeOfDayChanged(HomeTimeOfDayController.TimeOfDay tod)
+        {
+            if (bodyImage == null) { return; }
+
+            tintTween?.Kill();
+
+            Color target = ResolveTint(tod);
+            target.a = bodyImage.color.a;
+
+            DebugLogger.Info(LogCategory.UI, "HomeNabiPositionSystem: tint -> " + tod);
+
+            tintTween = bodyImage
+                .DOColor(target, UILayoutConstants.HomeNabiTintFadeSeconds)
+                .SetEase(Ease.InOutSine)
+                .SetUpdate(true);
+        }
+
+        private static Color ResolveTint(HomeTimeOfDayController.TimeOfDay tod)
+        {
+            switch (tod)
+            {
+                case HomeTimeOfDayController.TimeOfDay.Dawn:
+                    return UILayoutConstants.HomeNabiTintDawn;
+                case HomeTimeOfDayController.TimeOfDay.Day:
+                    return UILayoutConstants.HomeNabiTintDay;
+                case HomeTimeOfDayController.TimeOfDay.Evening:
+                    return UILayoutConstants.HomeNabiTintEvening;
+                case HomeTimeOfDayController.TimeOfDay.Night:
+                    return UILayoutConstants.HomeNabiTintNight;
+                default:
+                    return Color.white;
             }
         }
 
@@ -287,7 +398,6 @@ namespace WhiskerTales.Runtime
 
         private PoseId PickWeightedRandomPose()
         {
-            // 정면 응시(IdleSit) 빈도 낮게. 나머지는 균등.
             if (Random.value < UILayoutConstants.HomeNabiFrontalPoseChance)
             {
                 return PoseId.IdleSit;
@@ -313,7 +423,12 @@ namespace WhiskerTales.Runtime
 
         // ---------- Breathing ----------
 
-        private void StartBreathing()
+        private void StartBreathing(float baseScale)
+        {
+            RestartBreathing(baseScale);
+        }
+
+        private void RestartBreathing(float baseScale)
         {
             if (body == null) { return; }
 
@@ -323,11 +438,14 @@ namespace WhiskerTales.Runtime
                 UILayoutConstants.HomeNabiQuietBreathSecondsMin,
                 UILayoutConstants.HomeNabiQuietBreathSecondsMax);
 
-            body.localScale = Vector3.one;
+            Vector3 from = Vector3.one * baseScale;
+            Vector3 to = Vector3.one * (baseScale * UILayoutConstants.HomeNabiQuietBreathScale);
+
+            body.localScale = from;
 
             breathTween = body
-                .DOScale(UILayoutConstants.HomeNabiQuietBreathScale, period)
-                .From(Vector3.one)
+                .DOScale(to, period)
+                .From(from)
                 .SetEase(Ease.InOutSine)
                 .SetLoops(-1, LoopType.Yoyo)
                 .SetUpdate(true);
@@ -381,14 +499,12 @@ namespace WhiskerTales.Runtime
 
         private void TryStretch()
         {
-            // 매우 드물게만 실제 발생 — 게임 idle animation 느낌 회피.
             if (Random.value > UILayoutConstants.HomeNabiQuietStretchChance)
             {
                 ScheduleNextStretch();
                 return;
             }
 
-            // hidden 상태이거나 sprite ref가 없으면 스킵.
             if (currentState != State.Visible || poseStretchSmall == null || bodyImage == null)
             {
                 ScheduleNextStretch();
@@ -421,6 +537,52 @@ namespace WhiskerTales.Runtime
                     ScheduleNextStretch();
                 },
                 false).SetUpdate(true);
+        }
+
+        // ---------- Procedural shadow sprite ----------
+
+        private void EnsureShadowSprite()
+        {
+            if (shadowImage == null) { return; }
+            if (shadowImage.sprite != null) { return; }
+
+            if (cachedShadowSprite == null)
+            {
+                cachedShadowSprite = CreateSoftEllipseSprite(128, 64);
+            }
+
+            shadowImage.sprite = cachedShadowSprite;
+        }
+
+        private static Sprite CreateSoftEllipseSprite(int width, int height)
+        {
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.name = "NabiShadowEllipse";
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.filterMode = FilterMode.Bilinear;
+
+            Color[] pixels = new Color[width * height];
+            float halfW = width * 0.5f;
+            float halfH = height * 0.5f;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float dx = (x + 0.5f - halfW) / halfW;
+                    float dy = (y + 0.5f - halfH) / halfH;
+                    float distSq = dx * dx + dy * dy;
+                    float t = Mathf.Clamp01(1f - distSq);
+                    // t^2로 더 부드러운 falloff — 가장자리가 점점 흐려짐.
+                    float alpha = t * t;
+                    pixels[y * width + x] = new Color(1f, 1f, 1f, alpha);
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply();
+
+            return Sprite.Create(tex, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f));
         }
     }
 }

@@ -39,6 +39,15 @@ namespace WhiskerTales.Runtime
         private Tween activeTween;
         private bool initialized;
 
+        /// <summary>구독자가 OnEnable 시점에 현재 시간대를 동기적으로 조회하기 위한 프로퍼티.</summary>
+        public TimeOfDay CurrentTimeOfDay
+        {
+            get { return currentTimeOfDay; }
+        }
+
+        /// <summary>시간대 경계 전환 시 발생. 페이드와 동시에 fire — 구독자는 동일 기간 동안 자체 transition 가능.</summary>
+        public event System.Action<TimeOfDay> TimeOfDayChanged;
+
         private void OnEnable()
         {
             if (initialized == false)
@@ -128,6 +137,12 @@ namespace WhiskerTales.Runtime
             currentTimeOfDay = target;
 
             DebugLogger.Info(LogCategory.UI, "HomeTimeOfDayController: crossfade -> " + target);
+
+            // 구독자에게 fire — 같은 fade duration 동안 자체 transition 가능 (e.g., nabi tint).
+            if (TimeOfDayChanged != null)
+            {
+                TimeOfDayChanged.Invoke(target);
+            }
 
             activeTween = fadingIn
                 .DOFade(1f, UILayoutConstants.HomeBackgroundCrossfadeSeconds)

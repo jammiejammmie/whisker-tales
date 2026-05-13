@@ -69,6 +69,15 @@ namespace WhiskerTales.UI
         public const float HomeNabiHiddenProbability = 0.25f;
         public const float HomeNabiFrontalPoseChance = 0.12f;
 
+        // Spatial integration — shadow + perspective + time-of-day tint.
+        public const float HomeNabiShadowBaseAlpha = 0.25f;
+        public const float HomeNabiTintFadeSeconds = 4f;
+        public const float HomeNabiPerspectiveDefault = 1f;
+        public static readonly Color HomeNabiTintDawn = FromHex("#E8EDF5");
+        public static readonly Color HomeNabiTintDay = FromHex("#FFFFFF");
+        public static readonly Color HomeNabiTintEvening = FromHex("#F8EDD8");
+        public static readonly Color HomeNabiTintNight = FromHex("#C4A882");
+
         public static Color FromHex(string hex)
         {
             if (ColorUtility.TryParseHtmlString(hex, out Color color) == true)
