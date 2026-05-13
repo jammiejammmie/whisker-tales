@@ -4,20 +4,20 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using WhiskerTales.Runtime;
-using WhiskerTales.UI.Screens;
 
 namespace WhiskerTales.EditorTools
 {
     /// <summary>
-    /// Main_App 씬의 HomeScreen 자식으로 HomeTimeOfDayController + LayerA/LayerB Image 2장을
-    /// canvas 최하단(첫 sibling)에 자동 생성하고, 01_MAIN_HOME의 4개 시간대 sprite를 wire한다.
+    /// Main_App의 Canvas_Background(SafeArea 밖, sortingOrder=0) 아래에 HomeTimeOfDayController +
+    /// LayerA/LayerB Image 2장을 자동 생성하고, 01_MAIN_HOME의 4개 시간대 sprite를 wire한다.
     /// 메뉴: Whisker Tales/Setup/Setup Time Of Day
-    /// Idempotent — 다시 실행해도 중복 생성 없이 wiring만 갱신.
+    /// Idempotent — 씬 어디에 있든 기존 HomeTimeOfDay를 찾아 재부모화 (HomeScreen → Canvas_Background).
     /// </summary>
     public static class SetupTimeOfDay
     {
         private const string MainScenePath = "Assets/WhiskerTales/_Project/Scenes/Main_App.unity";
         private const string SpriteFolder = "Assets/WhiskerTales/Art/01_MAIN_HOME";
+        private const string CanvasBackgroundName = "Canvas_Background";
         private const string ContainerName = "HomeTimeOfDay";
         private const string LayerAName = "LayerA";
         private const string LayerBName = "LayerB";
@@ -35,12 +35,12 @@ namespace WhiskerTales.EditorTools
                     return;
                 }
 
-                EditorUtility.DisplayProgressBar("Setup Time Of Day", "Locating HomeScreen…", 0.1f);
-                HomeScreen home = FindHomeScreen(scene);
+                EditorUtility.DisplayProgressBar("Setup Time Of Day", "Locating Canvas_Background…", 0.1f);
+                GameObject canvasBg = FindRootByName(scene, CanvasBackgroundName);
 
-                if (home == null)
+                if (canvasBg == null)
                 {
-                    Fail("Main_App 씬에 HomeScreen이 없습니다. 먼저 'Setup V2 Home Screen' 메뉴를 실행하세요.");
+                    Fail("Main_App 씬에 " + CanvasBackgroundName + " 가 없습니다. 먼저 'Generate V2 Scenes'를 실행하세요.");
                     return;
                 }
 
@@ -57,7 +57,21 @@ namespace WhiskerTales.EditorTools
                 }
 
                 EditorUtility.DisplayProgressBar("Setup Time Of Day", "Building hierarchy…", 0.6f);
-                GameObject containerGo = EnsureChild(home.gameObject, ContainerName);
+
+                // 기존 HomeTimeOfDayController가 씬 어디에 있든 찾아서 Canvas_Background로 이동.
+                HomeTimeOfDayController existing = FindControllerInScene(scene);
+                GameObject containerGo;
+
+                if (existing != null)
+                {
+                    containerGo = existing.gameObject;
+                    containerGo.transform.SetParent(canvasBg.transform, false);
+                }
+                else
+                {
+                    containerGo = EnsureChild(canvasBg, ContainerName);
+                }
+
                 StretchFull(containerGo);
                 containerGo.transform.SetAsFirstSibling();
 
@@ -91,12 +105,12 @@ namespace WhiskerTales.EditorTools
                 EditorUtility.DisplayDialog(
                     "Setup Time Of Day",
                     "완료\n\n" +
-                    "✓ HomeTimeOfDay GameObject (HomeScreen 첫 자식)\n" +
-                    "✓ LayerA / LayerB Image (stretch full)\n" +
+                    "✓ HomeTimeOfDay GameObject (" + CanvasBackgroundName + " 첫 자식, SafeArea 밖)\n" +
+                    "✓ LayerA / LayerB Image (stretch full → 화면 끝까지)\n" +
                     "✓ 4 sprite wired (dawn/day/evening/night)\n\n" +
-                    "주의: 기존 BG_Background이 시간대 배경을 덮을 수 있습니다.\n" +
-                    "시간대 배경만 보이려면 HomeScreen의 BG_Background을 비활성화하거나\n" +
-                    "sprite를 비워주세요.",
+                    "주의: HomeScreen의 BG_Background(있다면)을 비활성화하거나 sprite를 비워주세요.\n" +
+                    "Canvas_Screens(sort 100)가 Canvas_Background(sort 0) 위에 그려지므로\n" +
+                    "BG_Background에 불투명 sprite가 남아있으면 시간대 배경이 가려집니다.",
                     "확인");
                 Debug.Log("[Setup Time Of Day] Done.");
             }
@@ -140,13 +154,23 @@ namespace WhiskerTales.EditorTools
             return EditorSceneManager.OpenScene(MainScenePath, OpenSceneMode.Single);
         }
 
-        private static HomeScreen FindHomeScreen(Scene scene)
+        private static GameObject FindRootByName(Scene scene, string name)
         {
             GameObject[] roots = scene.GetRootGameObjects();
             for (int i = 0; i < roots.Length; i++)
             {
-                HomeScreen home = roots[i].GetComponentInChildren<HomeScreen>(true);
-                if (home != null) { return home; }
+                if (roots[i].name == name) { return roots[i]; }
+            }
+            return null;
+        }
+
+        private static HomeTimeOfDayController FindControllerInScene(Scene scene)
+        {
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                HomeTimeOfDayController c = roots[i].GetComponentInChildren<HomeTimeOfDayController>(true);
+                if (c != null) { return c; }
             }
             return null;
         }

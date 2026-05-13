@@ -11,7 +11,9 @@ namespace WhiskerTales.UI.Home
     public sealed class HomeCopyFader : MonoBehaviour
     {
         [SerializeField] private TextMeshProUGUI text;
-        [SerializeField] private string copy = "오늘도 여기 있어요.";
+        // 마침표 색을 명시적으로 크림(#F5F1E8)으로 강제 — 기본 TMP 폰트의 sprite/material 영향으로
+        // 마침표가 다른 색으로 보이는 이슈 회피. richText는 TMP 기본값(true)이라 별도 설정 불필요.
+        [SerializeField] private string copy = "오늘도 여기 있어요<color=#F5F1E8>.</color>";
 
         private Tween fadeTween;
 

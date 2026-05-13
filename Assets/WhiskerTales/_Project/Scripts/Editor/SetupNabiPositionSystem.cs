@@ -31,13 +31,15 @@ namespace WhiskerTales.EditorTools
             public HomeNabiPositionSystem.PoseId pose;
         }
 
+        // 하단 anchor 3개(cushion/maru_end/puzzle_book)를 y=-550으로 상향 — 카피(탭바 위 y≈210)와
+        // 본체(280×320 pivot center) 하단이 겹치지 않게. body_bottom = (960 + y) - 160 ≥ 카피 top.
         private static readonly AnchorSpec[] DefaultAnchors = new AnchorSpec[]
         {
-            new AnchorSpec { id = "pos_maru_end",    pos = new Vector2( 350f, -700f), pose = HomeNabiPositionSystem.PoseId.Random },
-            new AnchorSpec { id = "pos_puzzle_book", pos = new Vector2(-250f, -650f), pose = HomeNabiPositionSystem.PoseId.Random },
-            new AnchorSpec { id = "pos_cushion",     pos = new Vector2(   0f, -750f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf },
+            new AnchorSpec { id = "pos_maru_end",    pos = new Vector2( 350f, -550f), pose = HomeNabiPositionSystem.PoseId.Random },
+            new AnchorSpec { id = "pos_puzzle_book", pos = new Vector2(-250f, -550f), pose = HomeNabiPositionSystem.PoseId.Random },
+            new AnchorSpec { id = "pos_cushion",     pos = new Vector2(   0f, -550f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf },
             new AnchorSpec { id = "pos_door_front",  pos = new Vector2( 400f, -300f), pose = HomeNabiPositionSystem.PoseId.IdleSit },
-            new AnchorSpec { id = "pos_sunlight",    pos = new Vector2(-150f, -500f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf },
+            new AnchorSpec { id = "pos_sunlight",    pos = new Vector2(-150f, -450f), pose = HomeNabiPositionSystem.PoseId.SleepyLoaf },
             new AnchorSpec { id = "pos_eave",        pos = new Vector2(-300f,  200f), pose = HomeNabiPositionSystem.PoseId.Random },
             new AnchorSpec { id = "pos_yard_view",   pos = new Vector2( 200f, -100f), pose = HomeNabiPositionSystem.PoseId.Random },
             new AnchorSpec { id = "pos_lantern",     pos = new Vector2(-350f,  100f), pose = HomeNabiPositionSystem.PoseId.Random }

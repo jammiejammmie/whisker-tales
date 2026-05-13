@@ -61,7 +61,11 @@ namespace WhiskerTales.EditorTools
 
                 Sprite catNabi = AssetDatabase.LoadAssetAtPath<Sprite>(CatNabiSpritePath);
                 HomeObjectSet set = AssetDatabase.LoadAssetAtPath<HomeObjectSet>(SetAssetPath);
-                TMP_FontAsset font = TMP_Settings.defaultFontAsset;
+
+                // NotoSansKR_SDF를 primary font로 강제. 기본 TMP 폰트(LiberationSans 등)의
+                // material/sprite asset 영향으로 마침표가 다른 색(핑크 등)으로 렌더링되는 이슈 회피.
+                TMP_FontAsset koreanFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Fonts/NotoSansKR_SDF.asset");
+                TMP_FontAsset font = koreanFont != null ? koreanFont : TMP_Settings.defaultFontAsset;
 
                 EditorUtility.DisplayProgressBar("Setup V2 Home Screen", "Building HomeScreen…", 0.5f);
                 HomeScreen home = BuildHomeScreen(nav, bgSprite, catNabi, set, font);
@@ -255,11 +259,13 @@ namespace WhiskerTales.EditorTools
             SetSerializedReference(ambient, "lanternGlow", lanternImg);
             SetSerializedReference(ambient, "leafSway", leafGo.GetComponent<RectTransform>());
 
-            // TXT_HomeCopy
+            // TXT_HomeCopy — 탭바(BottomNav 170) 바로 위 여백 두고 배치. 나비 본체와 겹치지 않게.
             GameObject copyGo = EnsureChild(homeGo, "TXT_HomeCopy");
-            ConfigureRect(copyGo, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, 220f), new Vector2(900f, 70f));
+            ConfigureRect(copyGo, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, 210f), new Vector2(900f, 60f));
             TextMeshProUGUI copyTmp = EnsureComponent<TextMeshProUGUI>(copyGo);
-            copyTmp.text = "오늘도 여기 있어요.";
+            // 마침표 색 강제 (벨트+멜빵: 명시적 한글 폰트 + rich-text color tag).
+            copyTmp.text = "오늘도 여기 있어요<color=#F5F1E8>.</color>";
+            copyTmp.richText = true;
             copyTmp.fontSize = 38f;
             copyTmp.alignment = TextAlignmentOptions.Center;
             copyTmp.color = WhiskerTales.UI.UILayoutConstants.Cream;
@@ -269,6 +275,8 @@ namespace WhiskerTales.EditorTools
 
             HomeCopyFader fader = EnsureComponent<HomeCopyFader>(copyGo);
             SetSerializedReference(fader, "text", copyTmp);
+            // HomeCopyFader.copy를 새 rich-text 문자열로 갱신 (OnEnable에서 text.text = copy로 덮어쓰기 때문).
+            SetSerializedString(fader, "copy", "오늘도 여기 있어요<color=#F5F1E8>.</color>");
 
             return home;
         }
@@ -371,6 +379,19 @@ namespace WhiskerTales.EditorTools
             SerializedProperty p = so.FindProperty(field);
             if (p == null) { return; }
             p.enumValueIndex = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetSerializedString(Object target, string field, string value)
+        {
+            SerializedObject so = new SerializedObject(target);
+            SerializedProperty p = so.FindProperty(field);
+            if (p == null)
+            {
+                Debug.LogWarning("[Setup V2 Home Screen] string field not found: " + field + " on " + target.GetType().Name);
+                return;
+            }
+            p.stringValue = value;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
     }
