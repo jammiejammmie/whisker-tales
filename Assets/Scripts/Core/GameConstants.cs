@@ -99,5 +99,15 @@ namespace WhiskerTales.Core
             public const string SaveKey = "WhiskerTales.SaveData";
             public const string SettingsKey = "WhiskerTales.Settings";
         }
+
+        public static class Home
+        {
+            // 5-stage time-of-day boundaries (hour of day, 24h clock, inclusive lower bound).
+            public const int DawnStartHour = 4;
+            public const int MorningStartHour = 7;
+            public const int DayStartHour = 11;
+            public const int EveningStartHour = 17;
+            public const int NightStartHour = 20;
+        }
     }
 }
