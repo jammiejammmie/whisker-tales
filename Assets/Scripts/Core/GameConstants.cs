@@ -99,5 +99,14 @@ namespace WhiskerTales.Core
             public const string SaveKey = "WhiskerTales.SaveData";
             public const string SettingsKey = "WhiskerTales.Settings";
         }
+
+        public static class Home
+        {
+            public const int DawnStartHour = 4;
+            public const int DayStartHour = 7;
+            public const int EveningStartHour = 17;
+            public const int NightStartHour = 20;
+            public const float BackgroundCheckIntervalSeconds = 30f;
+        }
     }
 }

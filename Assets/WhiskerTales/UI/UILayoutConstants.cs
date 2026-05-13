@@ -48,6 +48,8 @@ namespace WhiskerTales.UI
         public const float HomeCopyFadeStartSeconds = 2.4f;
         public const float HomeCopyFadeDurationSeconds = 1.6f;
 
+        public const float HomeBackgroundCrossfadeSeconds = 4f;
+
         public static Color FromHex(string hex)
         {
             if (ColorUtility.TryParseHtmlString(hex, out Color color) == true)
