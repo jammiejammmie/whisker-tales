@@ -17,4 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/WhiskerTales/Scenes/Main.unity
     guid: 4831d3880226b3946936dacee5e81830
+  - enabled: 1
+    path: Assets/WhiskerTales/Puzzle/Skin/Scenes/WhiskerGameScene.unity
+    guid: 0fee55823ed733e42b3c626accda13d2
   m_configObjects: {}

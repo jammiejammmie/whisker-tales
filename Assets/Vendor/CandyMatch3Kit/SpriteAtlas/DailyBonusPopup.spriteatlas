@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: DailyBonusPopup
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 102900000, guid: 42439af6dece246caac5caa8e0e9babc, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - a940309287de94194a9528531458e0cb: 21300000
+    - 44c8c7a3d13594b33948e9713b13849e: 21300000
+    - 0e8045b33e1524905b25345d92945d92: 21300000
+    - 2b47edc325d5040868c97b35120fd155: 21300000
+    - e0bbcc04fb6254a60af2640aedd6b828: 21300000
+    - 3ef18e24d7b4447d093bccbb6856ad06: 21300000
+    - 239a8ab4670c247be8dcb981bed13c17: 21300000
+    - bc3957f41b2994e5a8d7a7d2325d6130: 21300000
+    - cdf226c5a01734862b9c710574b8dbee: 21300000
+    - 12c130e59aeab491b9e7abd87f25585d: 21300000
+    - 39af00d736e9245f5a608251ddcfaefb: 21300000
+    - c001ce399ec954fe4ae09a307029cec6: 21300000
+    - e14d30494eab14b95b56502161504d99: 21300000
+    - 7866d8594521e447f89038965f2112b2: 21300000
+    - 55fb1c1ae39ac44588628d8ea2cfcc7b: 21300000
+    - 3516654a485fb4a97b56b84eb85428ab: 21300000
+    - 0039915a280574cc2a79ed607e08740f: 21300000
+    - 56dad67a9a02d4a33b9497ec0f094804: 21300000
+    - f5ac668ae6c9d41ebb116d9b1595eeca: 21300000
+    - ca4c80daf9e28482e82d40e66f4a4df5: 21300000
+    - 08148e5c6aacb41b1a7e2a53f5d323ea: 21300000
+    - cafa7dbd4d3be40649622c65f318d434: 21300000
+    - 48cd553e8edf14ac0918de93a3cc551e: 21300000
+    - 6d124c9e9d2d642c6a623cdb420b21f9: 21300000
+    - 9d4df8bf896c841c0b3753072047e1b7: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: a940309287de94194a9528531458e0cb, type: 3}
+  - {fileID: 21300000, guid: 44c8c7a3d13594b33948e9713b13849e, type: 3}
+  - {fileID: 21300000, guid: 0e8045b33e1524905b25345d92945d92, type: 3}
+  - {fileID: 21300000, guid: 2b47edc325d5040868c97b35120fd155, type: 3}
+  - {fileID: 21300000, guid: e0bbcc04fb6254a60af2640aedd6b828, type: 3}
+  - {fileID: 21300000, guid: 3ef18e24d7b4447d093bccbb6856ad06, type: 3}
+  - {fileID: 21300000, guid: 239a8ab4670c247be8dcb981bed13c17, type: 3}
+  - {fileID: 21300000, guid: bc3957f41b2994e5a8d7a7d2325d6130, type: 3}
+  - {fileID: 21300000, guid: cdf226c5a01734862b9c710574b8dbee, type: 3}
+  - {fileID: 21300000, guid: 12c130e59aeab491b9e7abd87f25585d, type: 3}
+  - {fileID: 21300000, guid: 39af00d736e9245f5a608251ddcfaefb, type: 3}
+  - {fileID: 21300000, guid: c001ce399ec954fe4ae09a307029cec6, type: 3}
+  - {fileID: 21300000, guid: e14d30494eab14b95b56502161504d99, type: 3}
+  - {fileID: 21300000, guid: 7866d8594521e447f89038965f2112b2, type: 3}
+  - {fileID: 21300000, guid: 55fb1c1ae39ac44588628d8ea2cfcc7b, type: 3}
+  - {fileID: 21300000, guid: 3516654a485fb4a97b56b84eb85428ab, type: 3}
+  - {fileID: 21300000, guid: 0039915a280574cc2a79ed607e08740f, type: 3}
+  - {fileID: 21300000, guid: 56dad67a9a02d4a33b9497ec0f094804, type: 3}
+  - {fileID: 21300000, guid: f5ac668ae6c9d41ebb116d9b1595eeca, type: 3}
+  - {fileID: 21300000, guid: ca4c80daf9e28482e82d40e66f4a4df5, type: 3}
+  - {fileID: 21300000, guid: 08148e5c6aacb41b1a7e2a53f5d323ea, type: 3}
+  - {fileID: 21300000, guid: cafa7dbd4d3be40649622c65f318d434, type: 3}
+  - {fileID: 21300000, guid: 48cd553e8edf14ac0918de93a3cc551e, type: 3}
+  - {fileID: 21300000, guid: 6d124c9e9d2d642c6a623cdb420b21f9, type: 3}
+  - {fileID: 21300000, guid: 9d4df8bf896c841c0b3753072047e1b7, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - Life
+  - Coins1
+  - Coins3
+  - ColorBomb
+  - Coins6
+  - BigListActive
+  - BigListinactive
+  - Switch
+  - Lollipop
+  - ListInactive
+  - Cloud
+  - ListActive
+  - Tick
+  - Background
+  - Coins2
+  - Button
+  - Sparkle
+  - TextBackground
+  - MarshmallowPink
+  - Coins5
+  - BigItemSticker
+  - Coins4
+  - Bomb
+  - Marshmallow
+  - Rainbow
+  m_RenderDataMap: {}
+  m_Tag: DailyBonusPopup
+  m_IsVariant: 0

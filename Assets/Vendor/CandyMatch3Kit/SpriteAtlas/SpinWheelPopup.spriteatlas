@@ -1,0 +1,141 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: SpinWheelPopup
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 102900000, guid: 291e3a240a6794782a72971e485256e7, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - 88135f308e25241be9afd8d25d25ca0b: 21300000
+    - c6a8644098a134aebabcbcb81715ebd0: 21300000
+    - ea6e5190bf8a8437bafcb6321a4d1820: 21300000
+    - 1dc53ba03b6f847b18a98b3122634f42: 21300000
+    - b34bb4314b8614840bad17bde9cf8570: 21300000
+    - d6e315317c698487eacad3513e7c34f4: 21300000
+    - 948631811a0e24f4eadac0a508d0cd70: 21300000
+    - a09a8f9352eb342d1a4e1d4aa3eba771: 21300000
+    - bdf1bef3e967e424ab65e5d6ea15ec70: 21300000
+    - 83aba224f3a1c4566bb92ac8ab3d9b44: 21300000
+    - 07569d34c63d34833a00de3953058369: 21300000
+    - 15a264a46041f48a182948c182d5149e: 21300000
+    - 71bff116ac6e445e7a9746be735bd1f7: 21300000
+    - 9e8f86b66e98e4886835c4fa8e0f294d: 21300000
+    - 00d82ac63231e4a96bfc5a3dd4a9ea60: 21300000
+    - 5f7eb0d6210364fbfa246654bdfcf898: 21300000
+    - 0bc6ffd65d00f4e80892a7133c2587a5: 21300000
+    - 04ab2ea7f8c4e4568a28b55f4ad2d183: 21300000
+    - dd469fa747d144efe8cba0364d1db47d: 21300000
+    - 7716e438084ae4172890a23fb4076119: 21300000
+    - d84a2349c349a400aa2887b77935dd84: 21300000
+    - 2f93b7d9df3e04ff7b905436d920e288: 21300000
+    - 8752f8d9c006c420480168b57abb1709: 21300000
+    - 8ef87a3a942ef449e871cb091d21d83f: 21300000
+    - 0aff7e5a1513040ee9603d3313fc0563: 21300000
+    - b3c29d8a79b494cccba897eea78a7fae: 21300000
+    - e89bd69c80b594c06ba4bfba1e2dd6ee: 21300000
+    - 858c6abccccb44ce4ad71cd091c9716e: 21300000
+    - e6f2b1dd4558e41a5915be1cf22a7c3c: 21300000
+    - a93b763ed8a464be9b9a5aeb1da162c3: 21300000
+    - 0737a6fe40f3740898c6e7b293f1251e: 21300000
+    - d5705cdff13f54cbe817da8667ddb172: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: 88135f308e25241be9afd8d25d25ca0b, type: 3}
+  - {fileID: 21300000, guid: c6a8644098a134aebabcbcb81715ebd0, type: 3}
+  - {fileID: 21300000, guid: ea6e5190bf8a8437bafcb6321a4d1820, type: 3}
+  - {fileID: 21300000, guid: 1dc53ba03b6f847b18a98b3122634f42, type: 3}
+  - {fileID: 21300000, guid: b34bb4314b8614840bad17bde9cf8570, type: 3}
+  - {fileID: 21300000, guid: d6e315317c698487eacad3513e7c34f4, type: 3}
+  - {fileID: 21300000, guid: 948631811a0e24f4eadac0a508d0cd70, type: 3}
+  - {fileID: 21300000, guid: a09a8f9352eb342d1a4e1d4aa3eba771, type: 3}
+  - {fileID: 21300000, guid: bdf1bef3e967e424ab65e5d6ea15ec70, type: 3}
+  - {fileID: 21300000, guid: 83aba224f3a1c4566bb92ac8ab3d9b44, type: 3}
+  - {fileID: 21300000, guid: 07569d34c63d34833a00de3953058369, type: 3}
+  - {fileID: 21300000, guid: 15a264a46041f48a182948c182d5149e, type: 3}
+  - {fileID: 21300000, guid: 71bff116ac6e445e7a9746be735bd1f7, type: 3}
+  - {fileID: 21300000, guid: 9e8f86b66e98e4886835c4fa8e0f294d, type: 3}
+  - {fileID: 21300000, guid: 00d82ac63231e4a96bfc5a3dd4a9ea60, type: 3}
+  - {fileID: 21300000, guid: 5f7eb0d6210364fbfa246654bdfcf898, type: 3}
+  - {fileID: 21300000, guid: 0bc6ffd65d00f4e80892a7133c2587a5, type: 3}
+  - {fileID: 21300000, guid: 04ab2ea7f8c4e4568a28b55f4ad2d183, type: 3}
+  - {fileID: 21300000, guid: dd469fa747d144efe8cba0364d1db47d, type: 3}
+  - {fileID: 21300000, guid: 7716e438084ae4172890a23fb4076119, type: 3}
+  - {fileID: 21300000, guid: d84a2349c349a400aa2887b77935dd84, type: 3}
+  - {fileID: 21300000, guid: 2f93b7d9df3e04ff7b905436d920e288, type: 3}
+  - {fileID: 21300000, guid: 8752f8d9c006c420480168b57abb1709, type: 3}
+  - {fileID: 21300000, guid: 8ef87a3a942ef449e871cb091d21d83f, type: 3}
+  - {fileID: 21300000, guid: 0aff7e5a1513040ee9603d3313fc0563, type: 3}
+  - {fileID: 21300000, guid: b3c29d8a79b494cccba897eea78a7fae, type: 3}
+  - {fileID: 21300000, guid: e89bd69c80b594c06ba4bfba1e2dd6ee, type: 3}
+  - {fileID: 21300000, guid: 858c6abccccb44ce4ad71cd091c9716e, type: 3}
+  - {fileID: 21300000, guid: e6f2b1dd4558e41a5915be1cf22a7c3c, type: 3}
+  - {fileID: 21300000, guid: a93b763ed8a464be9b9a5aeb1da162c3, type: 3}
+  - {fileID: 21300000, guid: 0737a6fe40f3740898c6e7b293f1251e, type: 3}
+  - {fileID: 21300000, guid: d5705cdff13f54cbe817da8667ddb172, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - Coins5
+  - Green2Bubble
+  - YellowBubble
+  - Coins1
+  - Handle
+  - Life
+  - Coins6
+  - Sparkle
+  - Bomb
+  - CloseButton
+  - QuitButton
+  - OrangeBubble
+  - WheelTop
+  - SpinButton
+  - Wheellight
+  - WheelShadow
+  - CenterBubble
+  - BlueBubble
+  - Coins3
+  - Lines
+  - Lollipop
+  - Coins4
+  - GreenBubble
+  - Coins2
+  - PinkBubble
+  - Switch
+  - HandleBubble
+  - Shadow
+  - PurpleBubble
+  - TurningWheel
+  - ColorBomb
+  - CoinSmallIcon
+  m_RenderDataMap: {}
+  m_Tag: SpinWheelPopup
+  m_IsVariant: 0
