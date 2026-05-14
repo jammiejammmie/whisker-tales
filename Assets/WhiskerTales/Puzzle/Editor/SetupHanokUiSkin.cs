@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GameVanilla.Core;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -23,8 +24,9 @@ namespace WhiskerTales.EditorTools
         private const int HanjiBorder = 48;
 
         private const string CardName = "LeftHanjiCard";
-        private static readonly Vector2 CardSize       = new Vector2(280f, 540f);
-        private static readonly Vector2 CardAnchorPos  = new Vector2(170f, -560f);
+        private static readonly Vector2 CardSize       = new Vector2(220f, 320f);
+        private static readonly Vector2 CardAnchorPos  = new Vector2(20f, -260f);
+        private static readonly Vector2 CardPivot      = new Vector2(0f, 1f);
 
         private static readonly Color BoosterButtonBgColor = new Color32(0xC8, 0xA9, 0x6E, 0xFF);
         private static readonly Color BoosterBadgeColor    = new Color32(0xD9, 0x40, 0x40, 0xFF);
@@ -43,9 +45,38 @@ namespace WhiskerTales.EditorTools
         // Phase 0 — Hanji texture generator
         // =========================================================================
 
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Run All Phases")]
+        public static void RunAllPhases()
+        {
+            if (!EnsureEditMode("Run All Phases"))
+            {
+                return;
+            }
+            Debug.Log("[HanokUI] === Run All Phases START ===");
+            GenerateHanjiSprite();
+            Phase1Apply();
+            Phase2Apply();
+            Phase3Build();
+            Phase4Apply();
+            Phase5Apply();
+            RepairPoolPrefabs();
+            Debug.Log("[HanokUI] === Run All Phases END — running self-tests ===");
+            Phase1Test();
+            Phase2Test();
+            Phase3Test();
+            Phase4Test();
+            Phase5Test();
+            RepairPoolPrefabsTest();
+            Debug.Log("[HanokUI] === All phases done — verify PASS lines above ===");
+        }
+
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Generate Hanji Panel Sprite")]
         public static void GenerateHanjiSprite()
         {
+            if (!EnsureEditMode("Generate Hanji Panel Sprite"))
+            {
+                return;
+            }
             EnsureFolder(HanjiDir);
 
             var tex = new Texture2D(HanjiSize, HanjiSize, TextureFormat.RGBA32, false);
@@ -109,6 +140,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Phase 1 - Font and Colors")]
         public static void Phase1Apply()
         {
+            if (!EnsureEditMode("Phase 1 - Font and Colors"))
+            {
+                return;
+            }
             var font = LoadFont();
             if (font == null)
             {
@@ -141,6 +176,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Phase 1 - Font and Colors")]
         public static void Phase1Test()
         {
+            if (!EnsureEditMode("Test Phase 1"))
+            {
+                return;
+            }
             var font = LoadFont();
             if (font == null)
             {
@@ -198,6 +237,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Phase 2 - Hanji TopBar")]
         public static void Phase2Apply()
         {
+            if (!EnsureEditMode("Phase 2 - Hanji TopBar"))
+            {
+                return;
+            }
             var sprite = LoadHanji();
             if (sprite == null)
             {
@@ -231,6 +274,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Phase 2 - Hanji TopBar")]
         public static void Phase2Test()
         {
+            if (!EnsureEditMode("Test Phase 2"))
+            {
+                return;
+            }
             var sprite = LoadHanji();
             if (sprite == null)
             {
@@ -269,6 +316,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Phase 3 - Left Hanji Card")]
         public static void Phase3Build()
         {
+            if (!EnsureEditMode("Phase 3 - Left Hanji Card"))
+            {
+                return;
+            }
             var sprite = LoadHanji();
             if (sprite == null)
             {
@@ -303,7 +354,7 @@ namespace WhiskerTales.EditorTools
             var rt = (RectTransform)card.transform;
             rt.anchorMin        = new Vector2(0f, 1f);
             rt.anchorMax        = new Vector2(0f, 1f);
-            rt.pivot            = new Vector2(0.5f, 0.5f);
+            rt.pivot            = CardPivot;
             rt.sizeDelta        = CardSize;
             rt.anchoredPosition = CardAnchorPos;
 
@@ -326,6 +377,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Phase 3 - Left Hanji Card")]
         public static void Phase3Test()
         {
+            if (!EnsureEditMode("Test Phase 3"))
+            {
+                return;
+            }
             var sprite = LoadHanji();
             var font = LoadFont();
             if (sprite == null || font == null)
@@ -387,6 +442,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Phase 4 - Booster Bar")]
         public static void Phase4Apply()
         {
+            if (!EnsureEditMode("Phase 4 - Booster Bar"))
+            {
+                return;
+            }
             var scene = OpenScene();
             var canvas = FindGameUICanvas(scene);
             if (canvas == null)
@@ -459,6 +518,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Phase 4 - Booster Bar")]
         public static void Phase4Test()
         {
+            if (!EnsureEditMode("Test Phase 4"))
+            {
+                return;
+            }
             var scene = OpenScene();
             var canvas = FindGameUICanvas(scene);
             if (canvas == null)
@@ -524,6 +587,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Phase 5 - Game Board Panel")]
         public static void Phase5Apply()
         {
+            if (!EnsureEditMode("Phase 5 - Game Board Panel"))
+            {
+                return;
+            }
             var scene = OpenScene();
             var bgCanvas = FindCanvasByName(scene, "BackgroundCanvas");
             if (bgCanvas == null)
@@ -568,6 +635,10 @@ namespace WhiskerTales.EditorTools
         [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Phase 5 - Game Board Panel")]
         public static void Phase5Test()
         {
+            if (!EnsureEditMode("Test Phase 5"))
+            {
+                return;
+            }
             var scene = OpenScene();
             var bgCanvas = FindCanvasByName(scene, "BackgroundCanvas");
             if (bgCanvas == null)
@@ -632,8 +703,204 @@ namespace WhiskerTales.EditorTools
         }
 
         // =========================================================================
-        // Internals
+        // Repair — ObjectPool.prefab references (post Kit-reimport recovery)
+        //
+        // When script GUIDs are restored after a Kit reimport, MonoBehaviour
+        // SerializeFields whose value-GUID also rolled (i.e. references to old
+        // Kit prefabs) become unresolvable. This menu re-binds each ObjectPool's
+        // `prefab` field by GameObject name. Six candy pools use our cat-tile
+        // variants; everything else uses the current Kit prefab.
         // =========================================================================
+
+        private const string KitPrefabRoot = "Assets/Vendor/CandyMatch3Kit/Prefabs";
+        private const string TileVariantRoot = "Assets/WhiskerTales/Puzzle/Skin/WhiskerTilePrefabs";
+
+        private static readonly Dictionary<string, string> PoolPrefabMap = new Dictionary<string, string>
+        {
+            // Base candy pools → cat-tile variants
+            { "BlueCandyPool",                   TileVariantRoot + "/FishTile.prefab" },
+            { "GreenCandyPool",                  TileVariantRoot + "/MilkTile.prefab" },
+            { "OrangeCandyPool",                 TileVariantRoot + "/YarnTile.prefab" },
+            { "PurpleCandyPool",                 TileVariantRoot + "/CatnipTile.prefab" },
+            { "RedCandyPool",                    TileVariantRoot + "/PawprintTile.prefab" },
+            { "YellowCandyPool",                 TileVariantRoot + "/FishboneTile.prefab" },
+
+            // Wrapped candies
+            { "BlueWrappedCandyPool",            KitPrefabRoot + "/Candies/WrappedBlueCandy.prefab" },
+            { "GreenWrappedCandyPool",           KitPrefabRoot + "/Candies/WrappedGreenCandy.prefab" },
+            { "OrangeWrappedCandyPool",          KitPrefabRoot + "/Candies/WrappedOrangeCandy.prefab" },
+            { "PurpleWrappedCandyPool",          KitPrefabRoot + "/Candies/WrappedPurpleCandy.prefab" },
+            { "RedWrappedCandyPool",             KitPrefabRoot + "/Candies/WrappedRedCandy.prefab" },
+            { "YellowWrappedCandyPool",          KitPrefabRoot + "/Candies/WrappedYellowCandy.prefab" },
+
+            // Horizontal striped
+            { "BlueHorizontalStripedCandyPool",  KitPrefabRoot + "/Candies/StripedHorizontalBlueCandy.prefab" },
+            { "GreenHorizontalStripedCandyPool", KitPrefabRoot + "/Candies/StripedHorizontalGreenCandy.prefab" },
+            { "OrangeHorizontalStripedCandyPool",KitPrefabRoot + "/Candies/StripedHorizontalOrangeCandy.prefab" },
+            { "PurpleHorizontalStripedCandyPool",KitPrefabRoot + "/Candies/StripedHorizontalPurpleCandy.prefab" },
+            { "RedHorizontalStripedCandyPool",   KitPrefabRoot + "/Candies/StripedHorizontalRedCandy.prefab" },
+            { "YellowHorizontalStripedCandyPool",KitPrefabRoot + "/Candies/StripedHorizontalYellowCandy.prefab" },
+
+            // Vertical striped
+            { "BlueVerticalStripedCandyPool",    KitPrefabRoot + "/Candies/StripedVerticalBlueCandy.prefab" },
+            { "GreenVerticalStripedCandyPool",   KitPrefabRoot + "/Candies/StripedVerticalGreenCandy.prefab" },
+            { "OrangeVerticalStripedCandyPool",  KitPrefabRoot + "/Candies/StripedVerticalOrangeCandy.prefab" },
+            { "PurpleVerticalStripedCandyPool",  KitPrefabRoot + "/Candies/StripedVerticalPurpleCandy.prefab" },
+            { "RedVerticalStripedCandyPool",     KitPrefabRoot + "/Candies/StripedVerticalRedCandy.prefab" },
+            { "YellowVerticalStripedCandyPool",  KitPrefabRoot + "/Candies/StripedVerticalYellowCandy.prefab" },
+
+            // Specials
+            { "ColorBombPool",                   KitPrefabRoot + "/Candies/ColorBomb.prefab" },
+            { "CherryPool",                      KitPrefabRoot + "/Collectables/Cherry.prefab" },
+            { "WatermelonPool",                  KitPrefabRoot + "/Collectables/Watermelon.prefab" },
+            { "HoneyPool",                       KitPrefabRoot + "/Elements/Honey.prefab" },
+            { "IcePool",                         KitPrefabRoot + "/Elements/Ice.prefab" },
+            { "Syrup1Pool",                      KitPrefabRoot + "/Elements/Syrup1.prefab" },
+            { "Syrup2Pool",                      KitPrefabRoot + "/Elements/Syrup2.prefab" },
+            { "ChocolatePool",                   KitPrefabRoot + "/SpecialBlocks/Chocolate.prefab" },
+            { "MarshmallowPool",                 KitPrefabRoot + "/SpecialBlocks/Marshmallow.prefab" },
+            { "UnbreakablePool",                 KitPrefabRoot + "/SpecialBlocks/Unbreakable.prefab" },
+            { "DarkBgTilePool",                  KitPrefabRoot + "/DarkBgTile.prefab" },
+            { "LightBgTilePool",                 KitPrefabRoot + "/LightBgTile.prefab" },
+            { "ComplimentTextPool",              KitPrefabRoot + "/ComplimentText.prefab" },
+
+            // Particle pools
+            { "BlueCandyExplosionPool",          KitPrefabRoot + "/Particles/Game/BlueCandyMatchParticles.prefab" },
+            { "GreenCandyExplosionPool",         KitPrefabRoot + "/Particles/Game/GreenCandyMatchParticles.prefab" },
+            { "OrangeCandyExplosionPool",        KitPrefabRoot + "/Particles/Game/OrangeCandyMatchParticles.prefab" },
+            { "PurpleCandyExplosionPool",        KitPrefabRoot + "/Particles/Game/PurpleCandyMatchParticles.prefab" },
+            { "RedCandyExplosionPool",           KitPrefabRoot + "/Particles/Game/RedCandyMatchParticles.prefab" },
+            { "YellowCandyExplosionPool",        KitPrefabRoot + "/Particles/Game/YellowCandyMatchParticles.prefab" },
+            { "WrappedCandyExplosionPool",       KitPrefabRoot + "/Particles/Game/WrappedCandyParticles.prefab" },
+            { "ColorBombExplosionPool",          KitPrefabRoot + "/Particles/Game/ColorBombParticles.prefab" },
+            { "VerticalStripedCandyExplosionPool",   KitPrefabRoot + "/Particles/Game/VerticalStripes.prefab" },
+            { "HorizontalStripedCandyExplosionPool", KitPrefabRoot + "/Particles/Game/HorizontalStripes.prefab" },
+            { "HoneyExplosionPool",              KitPrefabRoot + "/Particles/Game/HoneyParticles.prefab" },
+            { "IceExplosionPool",                KitPrefabRoot + "/Particles/Game/IceParticles.prefab" },
+            { "SyrupExplosionPool",              KitPrefabRoot + "/Particles/Game/SyrupParticles.prefab" },
+            { "ChocolateExplosionPool",          KitPrefabRoot + "/Particles/Game/ChocolateParticles.prefab" },
+            { "MarshmallowExplosionPool",        KitPrefabRoot + "/Particles/Game/MarshmallowParticles.prefab" },
+            { "CollectableExplosionPool",        KitPrefabRoot + "/Particles/Game/CollectablesParticles.prefab" },
+            { "SpawnParticles",                  KitPrefabRoot + "/Particles/Game/Spawn.prefab" },
+        };
+
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Repair Pool Prefab Refs")]
+        public static void RepairPoolPrefabs()
+        {
+            if (!EnsureEditMode("Repair Pool Prefab Refs"))
+            {
+                return;
+            }
+            var scene = OpenScene();
+            var pools = FindAllPoolsInScene(scene);
+            if (pools.Count == 0)
+            {
+                Debug.LogError("[RepairPool] No ObjectPool components found in scene");
+                return;
+            }
+
+            int repaired = 0;
+            int alreadyOK = 0;
+            int unmapped = 0;
+            int prefabMissing = 0;
+            var unmappedNames = new List<string>();
+            foreach (var pool in pools)
+            {
+                string name = pool.gameObject.name;
+                if (!PoolPrefabMap.TryGetValue(name, out string path))
+                {
+                    unmapped++;
+                    unmappedNames.Add(name);
+                    continue;
+                }
+
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null)
+                {
+                    Debug.LogWarning($"[RepairPool] {name}: prefab not at {path}");
+                    prefabMissing++;
+                    continue;
+                }
+
+                if (pool.prefab == prefab)
+                {
+                    alreadyOK++;
+                    continue;
+                }
+
+                Undo.RecordObject(pool, "Repair Pool Prefab");
+                pool.prefab = prefab;
+                EditorUtility.SetDirty(pool);
+                repaired++;
+            }
+
+            SaveAndRefresh(scene);
+            Debug.Log($"[RepairPool] total={pools.Count} repaired={repaired} alreadyOK={alreadyOK} unmapped={unmapped} prefabMissing={prefabMissing}");
+            if (unmapped > 0)
+            {
+                Debug.Log($"[RepairPool] unmapped pool names (skipped): {string.Join(", ", unmappedNames)}");
+            }
+        }
+
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Pool Prefab Refs")]
+        public static void RepairPoolPrefabsTest()
+        {
+            if (!EnsureEditMode("Test Pool Prefab Refs"))
+            {
+                return;
+            }
+            var scene = OpenScene();
+            var pools = FindAllPoolsInScene(scene);
+            if (pools.Count == 0)
+            {
+                Debug.Log("[RepairPool TEST] FAIL — no ObjectPool components in scene");
+                return;
+            }
+
+            int boundOK = 0;
+            int nullRef = 0;
+            var nullNames = new List<string>();
+            foreach (var pool in pools)
+            {
+                if (pool.prefab != null)
+                {
+                    boundOK++;
+                }
+                else
+                {
+                    nullRef++;
+                    nullNames.Add(pool.gameObject.name);
+                }
+            }
+
+            bool pass = (nullRef == 0 && boundOK == pools.Count);
+            string status = pass ? "PASS" : "FAIL";
+            Debug.Log($"[RepairPool TEST] {status} — total={pools.Count} bound={boundOK} null={nullRef}");
+            if (nullRef > 0)
+            {
+                Debug.Log($"[RepairPool TEST] null-prefab pools: {string.Join(", ", nullNames)}");
+            }
+        }
+
+        private static List<ObjectPool> FindAllPoolsInScene(Scene scene)
+        {
+            var result = new List<ObjectPool>();
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                result.AddRange(root.GetComponentsInChildren<ObjectPool>(true));
+            }
+            return result;
+        }
+
+        private static bool EnsureEditMode(string label)
+        {
+            if (Application.isPlaying)
+            {
+                Debug.LogError($"[HanokUI] {label}: aborted — this menu must run in Edit mode (current: Play). Exit Play mode and retry.");
+                return false;
+            }
+            return true;
+        }
 
         private static Scene OpenScene()
         {
