@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using GameVanilla.Core;
+using GameVanilla.Game.Common;
+using GameVanilla.Game.Scenes;
+using GameVanilla.Game.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -60,6 +64,7 @@ namespace WhiskerTales.EditorTools
             Phase4Apply();
             Phase5Apply();
             RepairPoolPrefabs();
+            RepairBoosterButtons();
             Debug.Log("[HanokUI] === Run All Phases END — running self-tests ===");
             Phase1Test();
             Phase2Test();
@@ -67,6 +72,7 @@ namespace WhiskerTales.EditorTools
             Phase4Test();
             Phase5Test();
             RepairPoolPrefabsTest();
+            RepairBoosterButtonsTest();
             Debug.Log("[HanokUI] === All phases done — verify PASS lines above ===");
         }
 
@@ -890,6 +896,179 @@ namespace WhiskerTales.EditorTools
                 result.AddRange(root.GetComponentsInChildren<ObjectPool>(true));
             }
             return result;
+        }
+
+        // =========================================================================
+        // Repair — BoosterButton instances have a missing BuyBoosterButton script
+        // (Kit BoosterButton.prefab embeds the broken script GUID — Vendor untouchable).
+        // We add a fresh BuyBoosterButton component on each of the 4 instances and
+        // re-bind BoosterBar.button1-4 via reflection. Awake assertions are bypassed by
+        // toggling activeSelf around AddComponent + field wiring.
+        // =========================================================================
+
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Repair Booster Buttons")]
+        public static void RepairBoosterButtons()
+        {
+            if (!EnsureEditMode("Repair Booster Buttons"))
+            {
+                return;
+            }
+
+            var scene = OpenScene();
+            var canvas = FindGameUICanvas(scene);
+            if (canvas == null)
+            {
+                Debug.LogError("[RepairBoosters] GameUICanvas not found");
+                return;
+            }
+
+            var bbT = FindRecursive(canvas.transform, "BoosterBar");
+            if (bbT == null)
+            {
+                Debug.LogError("[RepairBoosters] BoosterBar not found");
+                return;
+            }
+
+            var bar = bbT.GetComponent<BoosterBar>();
+            if (bar == null)
+            {
+                Debug.LogError("[RepairBoosters] BoosterBar MonoBehaviour missing");
+                return;
+            }
+
+            var gameScene = FindObjectOfTypeInScene<GameScene>(scene);
+            if (gameScene == null)
+            {
+                Debug.LogError("[RepairBoosters] GameScene component not found in scene");
+                return;
+            }
+
+            var instances = new List<GameObject>();
+            for (int i = 0; i < bbT.childCount; i++)
+            {
+                var c = bbT.GetChild(i);
+                if (c.name == "BoosterButton")
+                {
+                    instances.Add(c.gameObject);
+                }
+            }
+            if (instances.Count < 4)
+            {
+                Debug.LogError($"[RepairBoosters] expected 4 BoosterButton children, found {instances.Count}");
+                return;
+            }
+
+            var newRefs = new BuyBoosterButton[4];
+            var t = typeof(BuyBoosterButton);
+            const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public;
+            var gameSceneField = t.GetField("gameScene", flags);
+            var amountGroupField = t.GetField("amountGroup", flags);
+            var moreGroupField = t.GetField("moreGroup", flags);
+            var amountTextField = t.GetField("amountText", flags);
+            if (gameSceneField == null || amountGroupField == null || moreGroupField == null || amountTextField == null)
+            {
+                Debug.LogError("[RepairBoosters] BuyBoosterButton field reflection failed");
+                return;
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                var go = instances[i];
+                var existing = go.GetComponent<BuyBoosterButton>();
+                if (existing != null)
+                {
+                    newRefs[i] = existing;
+                    continue;
+                }
+
+                bool wasActive = go.activeSelf;
+                go.SetActive(false);
+                var bbb = Undo.AddComponent<BuyBoosterButton>(go);
+
+                var amountCircle = FindRecursive(go.transform, "BoosterAmountCircle");
+                var moreButton = FindRecursive(go.transform, "MoreButton");
+                var textBoosterAmount = FindRecursive(go.transform, "TextBoosterAmount");
+                Text amountText = textBoosterAmount != null ? textBoosterAmount.GetComponent<Text>() : null;
+
+                gameSceneField.SetValue(bbb, gameScene);
+                amountGroupField.SetValue(bbb, amountCircle != null ? amountCircle.gameObject : null);
+                moreGroupField.SetValue(bbb, moreButton != null ? moreButton.gameObject : null);
+                amountTextField.SetValue(bbb, amountText);
+                bbb.boosterType = (BoosterType)i;
+
+                EditorUtility.SetDirty(bbb);
+                go.SetActive(wasActive);
+                newRefs[i] = bbb;
+            }
+
+            var so = new SerializedObject(bar);
+            so.Update();
+            so.FindProperty("button1").objectReferenceValue = newRefs[0];
+            so.FindProperty("button2").objectReferenceValue = newRefs[1];
+            so.FindProperty("button3").objectReferenceValue = newRefs[2];
+            so.FindProperty("button4").objectReferenceValue = newRefs[3];
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(bar);
+
+            SaveAndRefresh(scene);
+            Debug.Log($"[RepairBoosters] Added BuyBoosterButton to {newRefs.Count(r => r != null)} instances and rebound BoosterBar.button1-4");
+        }
+
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Booster Buttons")]
+        public static void RepairBoosterButtonsTest()
+        {
+            if (!EnsureEditMode("Test Booster Buttons"))
+            {
+                return;
+            }
+
+            var scene = OpenScene();
+            var canvas = FindGameUICanvas(scene);
+            if (canvas == null)
+            {
+                Debug.Log("[RepairBoosters TEST] FAIL — GameUICanvas not found");
+                return;
+            }
+            var bbT = FindRecursive(canvas.transform, "BoosterBar");
+            if (bbT == null)
+            {
+                Debug.Log("[RepairBoosters TEST] FAIL — BoosterBar not found");
+                return;
+            }
+            var bar = bbT.GetComponent<BoosterBar>();
+            if (bar == null)
+            {
+                Debug.Log("[RepairBoosters TEST] FAIL — BoosterBar component missing");
+                return;
+            }
+
+            var so = new SerializedObject(bar);
+            int bound = 0;
+            for (int i = 1; i <= 4; i++)
+            {
+                var p = so.FindProperty("button" + i);
+                if (p != null && p.objectReferenceValue != null)
+                {
+                    bound++;
+                }
+            }
+
+            bool pass = (bound == 4);
+            string status = pass ? "PASS" : "FAIL";
+            Debug.Log($"[RepairBoosters TEST] {status} — BoosterBar.button1-4 bound={bound}/4");
+        }
+
+        private static T FindObjectOfTypeInScene<T>(Scene scene) where T : Component
+        {
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                var found = root.GetComponentInChildren<T>(true);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+            return null;
         }
 
         private static bool EnsureEditMode(string label)
