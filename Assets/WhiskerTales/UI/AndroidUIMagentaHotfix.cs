@@ -105,7 +105,10 @@ namespace WhiskerTales.UI
             }
 
             int totalPatched = patchedNullSprite + patchedBrokenTexture;
-            Debug.Log($"[MagentaHotfix:{phase}] scanned={images.Length} patched={totalPatched} (nullSprite={patchedNullSprite}, brokenTex={patchedBrokenTexture})");
+            if (totalPatched > 0)
+            {
+                Debug.Log($"[MagentaHotfix:{phase}] scanned={images.Length} patched={totalPatched} (nullSprite={patchedNullSprite}, brokenTex={patchedBrokenTexture})");
+            }
         }
     }
 }
