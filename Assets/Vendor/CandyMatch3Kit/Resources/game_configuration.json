@@ -21,7 +21,7 @@
         "Switch": 100,
         "ColorBomb": 100
     },
-    "defaultZoomLevel": 1.5,
+    "defaultZoomLevel": 2.2,
     "defaultCanvasScalingMatch": 0.5,
     "resolutionOverrides": [
         {
