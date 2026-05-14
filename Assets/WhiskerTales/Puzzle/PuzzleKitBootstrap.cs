@@ -18,6 +18,13 @@ namespace WhiskerTales.Puzzle
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void EnsureSingletons()
         {
+            // Defensive: RuntimeInitializeOnLoadMethod(BeforeSceneLoad) only fires once
+            // Play mode is starting, but guard anyway so no GameObject is ever spawned
+            // in Edit mode under unusual domain-reload scenarios.
+            if (!Application.isPlaying)
+            {
+                return;
+            }
             EnsurePuzzleMatchManager();
             EnsureSoundManager();
         }
