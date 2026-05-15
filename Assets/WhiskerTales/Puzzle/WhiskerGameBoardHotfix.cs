@@ -13,6 +13,14 @@ namespace WhiskerTales.Puzzle
     /// (which would crash SoundManager.AddSounds with MissingReferenceException on
     /// `.name`) and also normalizes the singleton SoundManager.sounds list.
     ///
+    /// Also scans every ObjectPool in the scene for a null `prefab` field — caused by
+    /// missing-asset GUIDs in WhiskerGameScene's TilePool (e.g. unbreakablePool,
+    /// marshmallowPool). A null prefab makes ObjectPool.Initialize blow up on
+    /// Instantiate(null), which aborts GameBoard.InitializeObjectPools mid-foreach and
+    /// leaves the remaining (candy) pools uninitialized, so no tiles spawn. The scanner
+    /// assigns a shared inert placeholder so Initialize completes; level 1 never asks
+    /// for the broken pools anyway.
+    ///
     /// Pattern follows AndroidUIMagentaHotfix: registered via RuntimeInitializeOnLoadMethod,
     /// hooks SceneManager.sceneLoaded, runs BEFORE GameBoard.Start() per Unity's documented
     /// sceneLoaded callback ordering (after Awake/OnEnable, before Start).
@@ -21,6 +29,7 @@ namespace WhiskerTales.Puzzle
     {
         private static bool bootstrapped;
         private static FieldInfo gameSoundsField;
+        private static GameObject placeholderPrefab;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -66,6 +75,11 @@ namespace WhiskerTales.Puzzle
             ScrubSoundManagerSingleton(phase);
 
             var roots = scene.GetRootGameObjects();
+            // Patch ObjectPools BEFORE anything else — GameScene.Start calls
+            // gameBoard.InitializeObjectPools() which iterates every pool and
+            // calls Instantiate(prefab); a single null prefab aborts the loop.
+            ScrubObjectPools(roots, phase);
+
             for (int i = 0; i < roots.Length; i++)
             {
                 var boards = roots[i].GetComponentsInChildren<GameBoard>(true);
@@ -74,6 +88,41 @@ namespace WhiskerTales.Puzzle
                     ScrubGameBoard(boards[j], phase);
                 }
             }
+        }
+
+        private static void ScrubObjectPools(GameObject[] roots, string phase)
+        {
+            int patched = 0;
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var pools = roots[i].GetComponentsInChildren<ObjectPool>(true);
+                for (int j = 0; j < pools.Length; j++)
+                {
+                    var pool = pools[j];
+                    if (pool.prefab == null)
+                    {
+                        pool.prefab = EnsurePlaceholderPrefab();
+                        Debug.Log($"[GameBoardHotfix:{phase}] {pool.gameObject.name}.prefab was null → assigned __ObjectPoolPlaceholder");
+                        patched++;
+                    }
+                }
+            }
+            if (patched > 0)
+            {
+                Debug.Log($"[GameBoardHotfix:{phase}] patched {patched} ObjectPool(s) with null prefab");
+            }
+        }
+
+        private static GameObject EnsurePlaceholderPrefab()
+        {
+            if (placeholderPrefab != null) return placeholderPrefab;
+            // Inactive so Instantiate clones it inactive — no rendering, no Awake side
+            // effects on the children of the broken pool. DontDestroyOnLoad so it
+            // survives scene transitions and stays valid for every future Initialize.
+            placeholderPrefab = new GameObject("__ObjectPoolPlaceholder");
+            placeholderPrefab.SetActive(false);
+            Object.DontDestroyOnLoad(placeholderPrefab);
+            return placeholderPrefab;
         }
 
         private static void ScrubGameBoard(GameBoard board, string phase)
