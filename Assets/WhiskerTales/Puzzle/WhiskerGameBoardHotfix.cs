@@ -17,9 +17,12 @@ namespace WhiskerTales.Puzzle
     /// missing-asset GUIDs in WhiskerGameScene's TilePool (e.g. unbreakablePool,
     /// marshmallowPool). A null prefab makes ObjectPool.Initialize blow up on
     /// Instantiate(null), which aborts GameBoard.InitializeObjectPools mid-foreach and
-    /// leaves the remaining (candy) pools uninitialized, so no tiles spawn. The scanner
-    /// assigns a shared inert placeholder so Initialize completes; level 1 never asks
-    /// for the broken pools anyway.
+    /// leaves the remaining (candy) pools uninitialized, so no tiles spawn.
+    ///
+    /// To keep Initialize crash-free without touching Vendor assets, the scanner
+    /// donates a sibling pool's healthy prefab (any non-null one in the same TilePool)
+    /// to the broken pools. Level 1 never asks for the patched pool types
+    /// (marshmallow/unbreakable), so the donated clones stay pooled and inert.
     ///
     /// Pattern follows AndroidUIMagentaHotfix: registered via RuntimeInitializeOnLoadMethod,
     /// hooks SceneManager.sceneLoaded, runs BEFORE GameBoard.Start() per Unity's documented
@@ -29,7 +32,6 @@ namespace WhiskerTales.Puzzle
     {
         private static bool bootstrapped;
         private static FieldInfo gameSoundsField;
-        private static GameObject placeholderPrefab;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -92,37 +94,43 @@ namespace WhiskerTales.Puzzle
 
         private static void ScrubObjectPools(GameObject[] roots, string phase)
         {
-            int patched = 0;
+            var allPools = new List<ObjectPool>();
             for (int i = 0; i < roots.Length; i++)
             {
-                var pools = roots[i].GetComponentsInChildren<ObjectPool>(true);
-                for (int j = 0; j < pools.Length; j++)
+                allPools.AddRange(roots[i].GetComponentsInChildren<ObjectPool>(true));
+            }
+
+            GameObject donor = null;
+            for (int k = 0; k < allPools.Count; k++)
+            {
+                if (allPools[k].prefab != null)
                 {
-                    var pool = pools[j];
-                    if (pool.prefab == null)
-                    {
-                        pool.prefab = EnsurePlaceholderPrefab();
-                        Debug.Log($"[GameBoardHotfix:{phase}] {pool.gameObject.name}.prefab was null → assigned __ObjectPoolPlaceholder");
-                        patched++;
-                    }
+                    donor = allPools[k].prefab;
+                    break;
                 }
             }
+
+            int patched = 0;
+            for (int k = 0; k < allPools.Count; k++)
+            {
+                var pool = allPools[k];
+                if (pool.prefab != null) continue;
+
+                if (donor == null)
+                {
+                    Debug.LogWarning($"[GameBoardHotfix:{phase}] {pool.gameObject.name}.prefab is null and no healthy donor pool found — Initialize will still crash");
+                    continue;
+                }
+
+                pool.prefab = donor;
+                Debug.Log($"[GameBoardHotfix:{phase}] {pool.gameObject.name}.prefab was null → donor {donor.name}");
+                patched++;
+            }
+
             if (patched > 0)
             {
-                Debug.Log($"[GameBoardHotfix:{phase}] patched {patched} ObjectPool(s) with null prefab");
+                Debug.Log($"[GameBoardHotfix:{phase}] patched {patched} ObjectPool(s) with donor prefab '{donor.name}'");
             }
-        }
-
-        private static GameObject EnsurePlaceholderPrefab()
-        {
-            if (placeholderPrefab != null) return placeholderPrefab;
-            // Inactive so Instantiate clones it inactive — no rendering, no Awake side
-            // effects on the children of the broken pool. DontDestroyOnLoad so it
-            // survives scene transitions and stays valid for every future Initialize.
-            placeholderPrefab = new GameObject("__ObjectPoolPlaceholder");
-            placeholderPrefab.SetActive(false);
-            Object.DontDestroyOnLoad(placeholderPrefab);
-            return placeholderPrefab;
         }
 
         private static void ScrubGameBoard(GameBoard board, string phase)
