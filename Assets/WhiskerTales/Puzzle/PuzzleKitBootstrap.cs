@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using GameVanilla.Core;
 using GameVanilla.Game.Common;
 using UnityEngine;
@@ -55,8 +56,12 @@ namespace WhiskerTales.Puzzle
             }
             var go = new GameObject("__SoundManager");
             Object.DontDestroyOnLoad(go);
-            go.AddComponent<SoundManager>();
-            Debug.Log("[PuzzleKitBootstrap] SoundManager singleton created (no sound pool — PlaySound will be a no-op)");
+            var mgr = go.AddComponent<SoundManager>();
+            // SoundManager.Start() iterates `sounds` with foreach — null throws NRE on
+            // bare singletons. Assign an empty list so Start completes cleanly; GameBoard
+            // will AddSounds(gameSounds) later to populate nameToSound.
+            mgr.sounds = new List<AudioClip>();
+            Debug.Log("[PuzzleKitBootstrap] SoundManager singleton created (sounds=[] — GameBoard will AddSounds at scene load)");
         }
     }
 }

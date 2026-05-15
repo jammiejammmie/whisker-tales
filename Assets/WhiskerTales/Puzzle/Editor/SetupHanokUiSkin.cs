@@ -65,6 +65,7 @@ namespace WhiskerTales.EditorTools
             Phase5Apply();
             RepairPoolPrefabs();
             RepairBoosterButtons();
+            RepairGameSounds();
             Debug.Log("[HanokUI] === Run All Phases END — running self-tests ===");
             Phase1Test();
             Phase2Test();
@@ -73,6 +74,7 @@ namespace WhiskerTales.EditorTools
             Phase5Test();
             RepairPoolPrefabsTest();
             RepairBoosterButtonsTest();
+            RepairGameSoundsTest();
             Debug.Log("[HanokUI] === All phases done — verify PASS lines above ===");
         }
 
@@ -1056,6 +1058,132 @@ namespace WhiskerTales.EditorTools
             bool pass = (bound == 4);
             string status = pass ? "PASS" : "FAIL";
             Debug.Log($"[RepairBoosters TEST] {status} — BoosterBar.button1-4 bound={bound}/4");
+        }
+
+        // =========================================================================
+        // Repair — GameBoard.gameSounds (the 17 Kit AudioClips). Re-populate from
+        // GUID list so the field is invariant under any prior corruption. Runtime
+        // null-scrubbing is handled by WhiskerGameBoardHotfix, but this menu makes
+        // the saved scene state authoritative so the regression cannot recur.
+        // =========================================================================
+
+        private static readonly string[] GameSoundGuids =
+        {
+            "173f0d04d4b0ba84789af543979c2f52", // BoosterAward
+            "173b4e2fb58254725aff68fe7ac1634c", // CandyFalling
+            "f2ee79924bbe9684baa2e63436259ef8", // CandyMatch
+            "25d460114338cde4e9ab4e42af0d3335", // CandyWrap
+            "ea487aa88e6b94b5f98bf5f1a8a78a66", // Chocolate
+            "0480a44be531742f9a31bd80405f9b09", // Collectable
+            "469c01a9973ac6847962965c280c7849", // ColorBomb
+            "5b2c5d43251222040a9ba2e29b5ef802", // Error
+            "f764bd42aee5a4fd8bd999ec397aefac", // Honey
+            "4daaa3cf592cb7745a6b0881a9fc49d1", // Ice
+            "5994527430a5c2049bef8e569f8c14fb", // LineVerticalHorizontal
+            "92db17ef6aa251648b5f4e08c497191e", // Marshmallow
+            "8192c49bc08245c4697c384a5794ca62", // ReachedGoal
+            "3a1ae27dd179646d38ab00dd91b00b0f", // Syrup
+            "f8978fd31a96542c98d6c37a3390dbd6", // ChocolateExpand
+            "06bad3cef25a447d5aa580cc57b9ef73", // StarProgressBar
+            "318103f526ece4934bcb644f591ae8f3", // ComplimentText
+        };
+
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Repair Game Sounds")]
+        public static void RepairGameSounds()
+        {
+            if (!EnsureEditMode("Repair Game Sounds"))
+            {
+                return;
+            }
+
+            var scene = OpenScene();
+            var board = FindObjectOfTypeInScene<GameBoard>(scene);
+            if (board == null)
+            {
+                Debug.LogError("[RepairGameSounds] GameBoard component not found in scene");
+                return;
+            }
+
+            var clips = new List<AudioClip>(GameSoundGuids.Length);
+            int missing = 0;
+            var missingGuids = new List<string>();
+            foreach (var guid in GameSoundGuids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                AudioClip clip = string.IsNullOrEmpty(path)
+                    ? null
+                    : AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+                if (clip == null)
+                {
+                    missing++;
+                    missingGuids.Add(guid);
+                    continue;
+                }
+                clips.Add(clip);
+            }
+
+            var so = new SerializedObject(board);
+            so.Update();
+            var prop = so.FindProperty("gameSounds");
+            if (prop == null)
+            {
+                Debug.LogError("[RepairGameSounds] GameBoard.gameSounds SerializedProperty not found");
+                return;
+            }
+            prop.arraySize = clips.Count;
+            for (int i = 0; i < clips.Count; i++)
+            {
+                prop.GetArrayElementAtIndex(i).objectReferenceValue = clips[i];
+            }
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(board);
+
+            SaveAndRefresh(scene);
+            Debug.Log($"[RepairGameSounds] GameBoard.gameSounds set to {clips.Count} clips (expected {GameSoundGuids.Length}, missing {missing})");
+            if (missing > 0)
+            {
+                Debug.LogWarning($"[RepairGameSounds] missing GUIDs: {string.Join(", ", missingGuids)}");
+            }
+        }
+
+        [MenuItem("WhiskerTales/Puzzle/Setup Hanok UI Skin/Test/Game Sounds")]
+        public static void RepairGameSoundsTest()
+        {
+            if (!EnsureEditMode("Test Game Sounds"))
+            {
+                return;
+            }
+
+            var scene = OpenScene();
+            var board = FindObjectOfTypeInScene<GameBoard>(scene);
+            if (board == null)
+            {
+                Debug.Log("[RepairGameSounds TEST] FAIL — GameBoard not found");
+                return;
+            }
+
+            var so = new SerializedObject(board);
+            var prop = so.FindProperty("gameSounds");
+            if (prop == null)
+            {
+                Debug.Log("[RepairGameSounds TEST] FAIL — gameSounds property not found");
+                return;
+            }
+
+            int expected = GameSoundGuids.Length;
+            int total = prop.arraySize;
+            int nonNull = 0;
+            for (int i = 0; i < total; i++)
+            {
+                if (prop.GetArrayElementAtIndex(i).objectReferenceValue != null)
+                {
+                    nonNull++;
+                }
+            }
+
+            bool pass = (total == expected && nonNull == expected);
+            string status = pass ? "PASS" : "FAIL";
+            Debug.Log($"[RepairGameSounds TEST] {status} — count={total}/{expected}, nonNull={nonNull}");
         }
 
         private static T FindObjectOfTypeInScene<T>(Scene scene) where T : Component
